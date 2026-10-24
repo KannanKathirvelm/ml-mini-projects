@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+var/
+*.db
+projects/07_object_detection/.ultralytics/
+# rebuilt at image build time by scripts/build_models.py
+projects/01_credit_card_fraud_detection/models/
+projects/02_upi_fraud_detection/models/
+projects/01_credit_card_fraud_detection/data/
+projects/02_upi_fraud_detection/data/
+projects/03_stock_price_prediction_lstm_rnn/models/*.png

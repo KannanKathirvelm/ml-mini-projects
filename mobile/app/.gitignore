@@ -1,0 +1,8 @@
+node_modules
+dist
+dist-apk
+.build
+android/app/build
+android/build
+android/.gradle
+android/app/src/main/assets/public

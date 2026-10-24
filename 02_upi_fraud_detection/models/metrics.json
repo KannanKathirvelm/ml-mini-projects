@@ -1,0 +1,58 @@
+{
+  "best_model": "gradient_boosting",
+  "threshold": 0.7742333162664723,
+  "validation": {
+    "logistic_regression": {
+      "average_precision": 0.9780085395710187,
+      "roc_auc": 0.9993928571428572
+    },
+    "random_forest": {
+      "average_precision": 0.9843757471205918,
+      "roc_auc": 0.9995933673469388
+    },
+    "gradient_boosting": {
+      "average_precision": 0.9864238651581241,
+      "roc_auc": 0.9996202806122448
+    }
+  },
+  "test": {
+    "average_precision": 0.9871102619891144,
+    "roc_auc": 0.9996688775510205,
+    "fraud_precision": 0.9156626506024096,
+    "fraud_recall": 0.95,
+    "fraud_f1": 0.9325153374233128,
+    "confusion_matrix": [
+      [
+        19565,
+        35
+      ],
+      [
+        20,
+        380
+      ]
+    ],
+    "recall_by_fraud_type": {
+      "account_takeover": 1.0,
+      "collect_scam": 0.9457,
+      "fake_qr": 0.8969
+    }
+  },
+  "feature_importance": {
+    "payee_account_age_days": 0.7827,
+    "mode": 0.0698,
+    "vpa_suspicious_words": 0.0199,
+    "vpa_mostly_digits": 0.0197,
+    "amount_log": 0.0187,
+    "failed_pin_attempts_24h": 0.0141,
+    "txns_last_1h": 0.0115,
+    "is_new_payee": 0.0112,
+    "amount_to_avg_ratio": 0.011,
+    "remark_scam_words": 0.0069,
+    "txn_type": 0.0042,
+    "payee_fraud_reports": 0.0021,
+    "hour": 0.0018,
+    "sim_changed_48h": 0.0004,
+    "is_night": -0.0,
+    "device_changed_48h": 0.0
+  }
+}

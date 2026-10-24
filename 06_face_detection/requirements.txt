@@ -1,0 +1,5 @@
+opencv-python>=4.10,<5   # OpenCV 5 moved CascadeClassifier out of the main package
+numpy
+pillow
+streamlit
+scikit-image             # only for the astronaut sample in download_samples.py

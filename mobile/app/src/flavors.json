@@ -1,0 +1,9 @@
+{
+  "creditcard": { "appName": "Card Fraud Check",      "letter": "C", "color": "#c2410c", "description": "Score a card transaction for fraud risk." },
+  "upi":        { "appName": "UPI Scam Shield",       "letter": "U", "color": "#7c3aed", "description": "Check a UPI payment for scam signals." },
+  "stocks":     { "appName": "Stock Forecast AI",     "letter": "S", "color": "#0f766e", "description": "RNN vs LSTM next-days price forecast." },
+  "finance":    { "appName": "Market Insight Agents", "letter": "M", "color": "#1d4ed8", "description": "Multi-agent market outlook for a ticker." },
+  "prices":     { "appName": "Price Compare",         "letter": "P", "color": "#15803d", "description": "Compare prices across stores and track deals." },
+  "faces":      { "appName": "Face Detect",           "letter": "F", "color": "#be185d", "description": "Detect and blur faces with YuNet or Haar." },
+  "objects":    { "appName": "Object Detect",         "letter": "O", "color": "#b45309", "description": "YOLO11 object detection on your photos." }
+}

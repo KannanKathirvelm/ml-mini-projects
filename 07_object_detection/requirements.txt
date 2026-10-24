@@ -1,0 +1,4 @@
+ultralytics>=8.3   # YOLO11 models, tracking, validation (pulls torch, torchvision, opencv-python)
+lap>=0.5           # linear assignment for ByteTrack (ultralytics would auto-install it on first --track)
+streamlit>=1.40
+pandas

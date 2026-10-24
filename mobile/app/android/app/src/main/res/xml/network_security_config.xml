@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Plain HTTP is allowed so the apps can reach a local dev server (10.0.2.2, LAN IP).
+     Production should use the HTTPS Hugging Face URL; tighten this for a release build. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors><certificates src="system" /></trust-anchors>
+    </base-config>
+</network-security-config>

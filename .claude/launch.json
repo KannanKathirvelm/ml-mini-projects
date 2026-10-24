@@ -1,0 +1,75 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "1-credit-card-fraud",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd '/Users/kannan-moni/Desktop/My new project /01_credit_card_fraud_detection' && exec python3 -m streamlit run app.py --server.port 8501 --server.headless true --browser.gatherUsageStats false"
+      ],
+      "port": 8501,
+      "autoPort": false
+    },
+    {
+      "name": "2-upi-fraud",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd '/Users/kannan-moni/Desktop/My new project /02_upi_fraud_detection' && exec python3 -m streamlit run app.py --server.port 8502 --server.headless true --browser.gatherUsageStats false"
+      ],
+      "port": 8502,
+      "autoPort": false
+    },
+    {
+      "name": "3-stock-lstm-rnn",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd '/Users/kannan-moni/Desktop/My new project /03_stock_price_prediction_lstm_rnn' && exec .venv/bin/python -m streamlit run app.py --server.port 8503 --server.headless true --browser.gatherUsageStats false"
+      ],
+      "port": 8503,
+      "autoPort": false
+    },
+    {
+      "name": "4-financial-agents",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd '/Users/kannan-moni/Desktop/My new project /04_financial_ai_agents' && exec .venv/bin/python -m streamlit run app.py --server.port 8511 --server.headless true --browser.gatherUsageStats false"
+      ],
+      "port": 8511,
+      "autoPort": false
+    },
+    {
+      "name": "5-price-comparison",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd '/Users/kannan-moni/Desktop/My new project /05_price_comparison_app' && exec .venv/bin/python -m streamlit run app.py --server.port 8512 --server.headless true --browser.gatherUsageStats false"
+      ],
+      "port": 8512,
+      "autoPort": false
+    },
+    {
+      "name": "6-face-detection",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd '/Users/kannan-moni/Desktop/My new project /06_face_detection' && exec .venv/bin/python -m streamlit run app.py --server.port 8513 --server.headless true --browser.gatherUsageStats false"
+      ],
+      "port": 8513,
+      "autoPort": false
+    },
+    {
+      "name": "7-object-detection",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd '/Users/kannan-moni/Desktop/My new project /07_object_detection' && exec .venv/bin/python -m streamlit run app.py --server.port 8514 --server.headless true --browser.gatherUsageStats false"
+      ],
+      "port": 8514,
+      "autoPort": false
+    }
+  ]
+}
