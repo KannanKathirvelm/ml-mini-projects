@@ -58,8 +58,11 @@ jobs:
           java-version: "17"
 
       # Uses the runner's preinstalled SDK (ANDROID_HOME) and accepts licenses so AGP can fetch
-      # any missing platform/build-tools (compileSdk 34) on demand.
+      # any missing platform/build-tools (compileSdk 34) on demand. The default package list
+      # includes the long-removed 'tools' package, which makes sdkmanager fail.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - uses: gradle/actions/wrapper-validation@v4
 
