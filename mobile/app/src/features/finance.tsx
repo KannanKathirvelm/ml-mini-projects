@@ -8,7 +8,7 @@ import type { FinanceReport, Stance } from '../api/types';
 import { LineChart } from '../components/Chart';
 import { Page } from '../components/Page';
 import { AsyncStatus, Empty } from '../components/Status';
-import { KeyValueList, currencyOf, money, num, pct } from '../components/Widgets';
+import { KeyValueList, currencyOf, fmtIst, money, num, pct } from '../components/Widgets';
 import { PopularIndian, TickerSearch } from '../components/India';
 import { QuoteHeader } from '../components/Live';
 import type { Benchmark } from '../api/types';
@@ -30,12 +30,26 @@ const Bullets: React.FC<{ title: string; items: string[]; color: string }> = ({ 
 
 const PERIOD_ORDER = ['1w', '1m', '3m', '6m', 'ytd', '1y', '3y', '5y'];
 const signed = (x: number | null | undefined) => (x === null || x === undefined ? '—' : `${x >= 0 ? '+' : ''}${(x * 100).toFixed(1)}%`);
-const BenchmarkCard: React.FC<{ b: Benchmark; ticker: string }> = ({ b, ticker }) => {
-  const rows = Object.entries(b.returns ?? {})
+type BRow = [period: string, stock: number | null, index: number | null];
+/** API.md section 9: flat stock_return_<p> / index_return_<p> fields. Falls back to the older { returns: { p: {stock, index} } } shape. */
+function benchmarkRows(b: Benchmark): BRow[] {
+  const rows: BRow[] = [];
+  for (const p of PERIOD_ORDER) {
+    const st = b[`stock_return_${p}`], ix = b[`index_return_${p}`];
+    if (typeof st === 'number' || typeof ix === 'number') rows.push([p, typeof st === 'number' ? st : null, typeof ix === 'number' ? ix : null]);
+  }
+  if (rows.length) return rows;
+  return Object.entries(b.returns ?? {})
     .filter(([, v]) => v && typeof v === 'object')
-    .sort(([a], [c]) => (PERIOD_ORDER.indexOf(a) + 99) % 99 - (PERIOD_ORDER.indexOf(c) + 99) % 99);
-  if (!rows.length && (b.beta === null || b.beta === undefined)) return null;
-  const name = b.name ?? 'NIFTY 50';
+    .sort(([a], [c]) => (PERIOD_ORDER.indexOf(a) + 99) % 99 - (PERIOD_ORDER.indexOf(c) + 99) % 99)
+    .map(([k, v]) => [k, v?.stock ?? null, v?.index ?? v?.benchmark ?? null]);
+}
+const BenchmarkCard: React.FC<{ b: Benchmark; ticker: string }> = ({ b, ticker }) => {
+  const rows = benchmarkRows(b);
+  const has = (x: unknown): x is number => typeof x === 'number';
+  if (!rows.length && !has(b.beta) && !has(b.relative_strength_1y)) return null;
+  const name = b.name ?? (b.symbol === '^GSPC' ? 'S&P 500' : 'NIFTY 50');
+  const rs = b.relative_strength_1y;
   return (
     <IonCard>
       <IonCardHeader><IonCardSubtitle>vs {name}</IonCardSubtitle></IonCardHeader>
@@ -44,12 +58,11 @@ const BenchmarkCard: React.FC<{ b: Benchmark; ticker: string }> = ({ b, ticker }
           <table className="metric-table bench-table">
             <thead><tr><th>Period</th><th>{ticker.replace(/\.(NS|BO)$/, '')}</th><th>{name}</th><th>Diff</th></tr></thead>
             <tbody>
-              {rows.map(([k, v]) => {
-                const s = v?.stock ?? null; const i = v?.index ?? v?.benchmark ?? null;
-                const diff = s !== null && i !== null ? s - i : null;
+              {rows.map(([k, st, ix]) => {
+                const diff = st !== null && ix !== null ? st - ix : null;
                 return (
                   <tr key={k}>
-                    <td>{k.toUpperCase()}</td><td>{signed(s)}</td><td>{signed(i)}</td>
+                    <td>{k.toUpperCase()}</td><td>{signed(st)}</td><td>{signed(ix)}</td>
                     <td style={{ color: diff === null ? undefined : diff >= 0 ? 'var(--ion-color-success)' : 'var(--ion-color-danger)' }}>{signed(diff)}</td>
                   </tr>
                 );
@@ -57,7 +70,8 @@ const BenchmarkCard: React.FC<{ b: Benchmark; ticker: string }> = ({ b, ticker }
             </tbody>
           </table>
         )}
-        {b.beta !== null && b.beta !== undefined && <p className="small">Beta vs {name}: <strong>{num(b.beta, 2)}</strong> (1 = moves with the index)</p>}
+        {has(b.beta) && <p className="small">Beta vs {name}: <strong>{num(b.beta, 2)}</strong> (1 = moves with the index)</p>}
+        {has(rs) && <p className="small">Relative strength (1y): <strong style={{ color: rs >= 0 ? 'var(--ion-color-success)' : 'var(--ion-color-danger)' }}>{signed(rs)}</strong> vs {name}</p>}
       </IonCardContent>
     </IonCard>
   );
@@ -74,13 +88,14 @@ const ReportView: React.FC<{ r: FinanceReport }> = ({ r }) => {
     ],
   }), [r]);
   const ind = r.indicators;
-  const cur = currencyOf(r.ticker, r.currency);
+  const sym = r.normalized_ticker ?? r.ticker;
+  const cur = currencyOf(sym, r.currency);
   return (
     <>
       <IonCard>
         <IonCardHeader>
-          <IonCardSubtitle>{r.ticker}{r.last_date ? ` · ${r.last_date}` : ''}{r.as_of_ist ? ` · as of ${r.as_of_ist}` : ''}</IonCardSubtitle>
-          <IonCardTitle>{r.company ?? r.ticker}</IonCardTitle>
+          <IonCardSubtitle>{sym}{r.last_date ? ` · ${r.last_date}` : ''}{r.as_of_ist ? ` · as of ${fmtIst(r.as_of_ist)}` : ''}</IonCardSubtitle>
+          <IonCardTitle>{r.company ?? sym}</IonCardTitle>
           <div className="chip-row">
             <IonBadge className="risk-badge" color={stanceColor(r.outlook)}>{(r.outlook ?? 'n/a').toUpperCase()}</IonBadge>
             {r.confidence && <IonChip outline>confidence: {r.confidence}</IonChip>}
@@ -108,7 +123,7 @@ const ReportView: React.FC<{ r: FinanceReport }> = ({ r }) => {
         </IonCard>
       )}
 
-      {r.benchmark && <BenchmarkCard b={r.benchmark} ticker={r.ticker} />}
+      {r.benchmark && <BenchmarkCard b={r.benchmark} ticker={sym} />}
 
       <IonCard>
         <IonCardHeader><IonCardSubtitle>Indicators</IonCardSubtitle></IonCardHeader>

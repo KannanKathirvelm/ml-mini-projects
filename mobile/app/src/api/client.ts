@@ -3,7 +3,7 @@ import * as mock from './mock';
 import type {
   AlertResult, CardInput, CardMeta, CardResult, FaceDetector, FaceResult, FinanceReport, Health,
   ObjectClasses, ObjectResult, PriceHistory, PriceSearch, StockForecast, StockTickers, TrackedItem,
-  UpiExample, UpiInput, UpiMeta, UpiResult, IndiaPopular, MarketStatus, IndiaSearch,
+  UpiExample, UpiInput, UpiMeta, UpiResult, IndiaPopular, MarketStatus, IndiaSearch, IndiaStocksPage,
 } from './types';
 
 import { ApiError } from './errors';
@@ -12,14 +12,34 @@ export { ApiError };
 /** A cold server (model loading, first request after restart) can take a while; give requests room. */
 const DEFAULT_TIMEOUT_MS = 120_000;
 const TRAIN_TIMEOUT_MS = 300_000;
+/**
+ * Render's free plan sleeps after 15 min idle; the first request then takes 50-60 s while it boots.
+ * Until a request to the current server has succeeded, every call gets at least this timeout and is retried.
+ */
+const COLD_TIMEOUT_MS = 95_000;
+const COLD_RETRIES = 2;
+const WAKING_AFTER_MS = 4_000;
+
+// ---------- "server waking up" state, shared by every screen ----------
+let warmBase: string | null = null;
+let waking = false;
+let coldInFlight = 0;
+const wakeSubs = new Set<() => void>();
+const setWaking = (v: boolean) => { if (v !== waking) { waking = v; wakeSubs.forEach((f) => f()); } };
+export const serverWaking = {
+  get: () => waking,
+  subscribe: (cb: () => void) => { wakeSubs.add(cb); return () => { wakeSubs.delete(cb); }; },
+};
+/** true until a request to the configured server has succeeded (or after the URL changes). */
+export const isServerCold = () => warmBase !== getSettings().serverUrl;
 
 interface ReqOpts { method?: string; body?: unknown; form?: FormData; timeoutMs?: number; signal?: AbortSignal }
 
-export async function request<T>(path: string, opts: ReqOpts = {}): Promise<T> {
-  const base = getSettings().serverUrl;
+async function requestOnce<T>(path: string, opts: ReqOpts, base: string, timeoutMs: number): Promise<T> {
   const ctrl = new AbortController();
-  const timeout = setTimeout(() => ctrl.abort('timeout'), opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
-  opts.signal?.addEventListener('abort', () => ctrl.abort('cancelled'));
+  const timeout = setTimeout(() => ctrl.abort('timeout'), timeoutMs);
+  const onAbort = () => ctrl.abort('cancelled');
+  opts.signal?.addEventListener('abort', onAbort);
   let res: Response;
   try {
     res = await fetch(base + path, {
@@ -32,9 +52,11 @@ export async function request<T>(path: string, opts: ReqOpts = {}): Promise<T> {
     if (ctrl.signal.aborted && ctrl.signal.reason === 'timeout') {
       throw new ApiError(`The server at ${base} did not answer in time.`, null, 'timeout');
     }
+    if (ctrl.signal.aborted) throw new ApiError('Request cancelled.', null, 'network');
     throw new ApiError(`Can't reach the server at ${base}. Check the URL in Settings, or turn on mock mode.`, null, 'network');
   } finally {
     clearTimeout(timeout);
+    opts.signal?.removeEventListener('abort', onAbort);
   }
   const text = await res.text();
   let data: unknown = null;
@@ -46,6 +68,51 @@ export async function request<T>(path: string, opts: ReqOpts = {}): Promise<T> {
   }
   if (data === null) throw new ApiError('The server returned an empty or non-JSON response.', res.status, 'parse');
   return data as T;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+export async function request<T>(path: string, opts: ReqOpts = {}): Promise<T> {
+  const base = getSettings().serverUrl;
+  const cold = warmBase !== base;
+  const timeoutMs = cold ? Math.max(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS, COLD_TIMEOUT_MS) : opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const method = (opts.method || (opts.body || opts.form ? 'POST' : 'GET')).toUpperCase();
+  if (cold) coldInFlight++;
+  const wakeTimer = cold ? setTimeout(() => warmBase !== base && setWaking(true), WAKING_AFTER_MS) : undefined;
+  try {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const d = await requestOnce<T>(path, opts, base, timeoutMs);
+        warmBase = base;
+        return d;
+      } catch (e) {
+        if (e instanceof ApiError && e.kind === 'http' && e.status !== null && e.status < 500) warmBase = base; // server answered
+        const gateway = e instanceof ApiError && (e.status === 502 || e.status === 503 || e.status === 504);
+        // Retry while the server is (probably) booting: always for GET, and for other methods only when
+        // nothing reached the app (connection refused / gateway error), so a POST is never run twice.
+        const retryable = e instanceof ApiError && !opts.signal?.aborted
+          && (gateway || e.kind === 'network' || (e.kind === 'timeout' && method === 'GET'));
+        if (!cold || !retryable || attempt >= COLD_RETRIES) {
+          if (e instanceof ApiError && cold && (e.kind === 'network' || e.kind === 'timeout' || gateway)) {
+            e.message += ' If it is on free hosting it may still be waking up: wait a few seconds and retry.';
+          }
+          throw e;
+        }
+        setWaking(true);
+        await sleep(3_000 * (attempt + 1));
+      }
+    }
+  } finally {
+    clearTimeout(wakeTimer);
+    if (cold) coldInFlight--;
+    if (warmBase === base || coldInFlight <= 0) setWaking(false);
+  }
+}
+
+/** Fire-and-forget ping at app start so a sleeping server starts booting before the user taps anything. */
+export function wakeServer() {
+  if (getSettings().mock || !isServerCold()) return;
+  request('/health', { timeoutMs: COLD_TIMEOUT_MS }).catch(() => { /* screens show their own errors */ });
 }
 
 const useMock = () => getSettings().mock;
@@ -76,6 +143,9 @@ export const api = {
     search: (query: string, limit = 10, signal?: AbortSignal): Promise<IndiaSearch> =>
       useMock() ? mock.indiaSearch(query, limit) : request(`/api/india/search${q({ q: query, limit })}`, { timeoutMs: 30_000, signal }),
     marketStatus: (): Promise<MarketStatus> => (useMock() ? mock.marketStatus() : request('/api/india/market-status', { timeoutMs: 60_000 })),
+    /** The whole NSE list, paged (0 <= offset, 1 <= limit <= 500). */
+    stocks: (offset = 0, limit = 100): Promise<IndiaStocksPage> =>
+      useMock() ? mock.indiaStocks(offset, limit) : request(`/api/india/stocks${q({ offset, limit })}`, { timeoutMs: 60_000 }),
   },
   finance: {
     report: (t: string): Promise<FinanceReport> =>

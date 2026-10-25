@@ -1,3 +1,6 @@
 .venv/
-data/
+data/*
+!data/nse_equities.csv
+!data/nse_equities_meta.json
 __pycache__/
+.pytest_cache/

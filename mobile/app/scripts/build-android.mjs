@@ -15,18 +15,28 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ANDROID = join(ROOT, 'android');
 const OUT = join(ROOT, 'dist-apk');
 
-// JDK: Capacitor 6 / AGP 8.2.1 needs JDK 17+. The GraalVM 17 on this machine breaks AGP's jlink step
-// (missing jdk.internal.vm.ci), so prefer Oracle JDK 23. Override with BUILD_JAVA_HOME.
+// JDK: Capacitor 6 / AGP 8.2.1 needs JDK 17+. Order: BUILD_JAVA_HOME, then JAVA_HOME (what actions/setup-java sets in CI),
+// then the Oracle JDK 23 on the author's Mac. A GraalVM JAVA_HOME is skipped: its JDK 17 breaks AGP's jlink step
+// (missing jdk.internal.vm.ci).
+const isGraal = (p) => /graal/i.test(p);
 const JDK_CANDIDATES = [
   process.env.BUILD_JAVA_HOME,
-  '/Library/Java/JavaVirtualMachines/jdk-23.jdk/Contents/Home',
+  process.env.JAVA_HOME && !isGraal(process.env.JAVA_HOME) ? process.env.JAVA_HOME : null,
+  process.platform === 'darwin' ? '/Library/Java/JavaVirtualMachines/jdk-23.jdk/Contents/Home' : null,
   process.env.JAVA_HOME,
 ].filter(Boolean);
-const JAVA_HOME = JDK_CANDIDATES.find((p) => existsSync(join(p, 'bin', 'java')));
-if (!JAVA_HOME) { console.error('No JDK found. Set BUILD_JAVA_HOME to a JDK 17+ (not GraalVM).'); process.exit(1); }
-const ANDROID_HOME = process.env.ANDROID_HOME || join(process.env.HOME, 'Library/Android/sdk');
+const JAVA_HOME = JDK_CANDIDATES.find((p) => existsSync(join(p, 'bin', process.platform === 'win32' ? 'java.exe' : 'java')));
+if (!JAVA_HOME) { console.error('No JDK found. Set JAVA_HOME (or BUILD_JAVA_HOME) to a JDK 17+ (not GraalVM).'); process.exit(1); }
+// Android SDK: ANDROID_HOME / ANDROID_SDK_ROOT (set by GitHub runners and android-actions/setup-android), else the
+// default Android Studio location for this OS. No local.properties needed.
+const HOME = process.env.HOME || process.env.USERPROFILE || '';
+const SDK_DEFAULT = process.platform === 'darwin' ? join(HOME, 'Library/Android/sdk')
+  : process.platform === 'win32' ? join(process.env.LOCALAPPDATA || HOME, 'Android/Sdk') : join(HOME, 'Android/Sdk');
+const ANDROID_HOME = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT || SDK_DEFAULT;
+if (!existsSync(ANDROID_HOME)) { console.error(`Android SDK not found at ${ANDROID_HOME}. Set ANDROID_HOME.`); process.exit(1); }
 
-const args = process.argv.slice(2).filter((a) => !a.startsWith('-'));
+// Accepts "upi faces", "upi,faces" or "all".
+const args = process.argv.slice(2).filter((a) => !a.startsWith('-')).flatMap((a) => a.split(/[,\s]+/)).filter(Boolean);
 const targets = args.length === 0 || args.includes('all') ? FLAVORS : args;
 const bad = targets.filter((t) => !FLAVORS.includes(t));
 if (bad.length) { console.error(`Unknown flavor(s): ${bad.join(', ')}. Valid: ${FLAVORS.join(', ')}, all`); process.exit(1); }
@@ -36,7 +46,7 @@ const gradlew = join(ANDROID, process.platform === 'win32' ? 'gradlew.bat' : 'gr
 const run = (cmd, argv, opts = {}) => execFileSync(cmd, argv, { stdio: 'inherit', cwd: ROOT, ...opts });
 const cap = (f) => f[0].toUpperCase() + f.slice(1);
 
-console.log(`JAVA_HOME=${JAVA_HOME}\nANDROID_HOME=${ANDROID_HOME}\nFlavors: ${targets.join(', ')}`);
+console.log(`JAVA_HOME=${JAVA_HOME}\nANDROID_HOME=${ANDROID_HOME}\nVITE_API_URL=${process.env.VITE_API_URL ?? '(from .env)'}\nFlavors: ${targets.join(', ')}`);
 if (!existsSync(join(ANDROID, 'app/src', targets[0], 'res/values/flavor.xml'))) run('python3', ['scripts/gen-icons.py']);
 run(npx, ['tsc', '--noEmit']);
 mkdirSync(OUT, { recursive: true });

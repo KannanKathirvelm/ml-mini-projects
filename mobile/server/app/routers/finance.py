@@ -12,7 +12,7 @@ from .. import loader
 from ..settings import FINANCE_CACHE_SECONDS
 
 router = APIRouter(prefix="/api/finance", tags=["finance"])
-TICKER_RE = re.compile(r"^[A-Za-z0-9.^=\-]{1,20}$")
+TICKER_RE = re.compile(r"^[A-Za-z0-9.^=&\-]{1,24}$")
 SENTIMENT = {1: "positive", 0: "neutral", -1: "negative"}
 
 _cache: dict[str, tuple[float, dict]] = {}
@@ -37,7 +37,10 @@ def build_report(ticker: str) -> dict:
     except m.data_tools.TickerNotFound as exc:
         raise HTTPException(404, str(exc)) from exc
     r, ind, prof = a.report, a.data["indicators"], a.data["fundamentals"]["profile"]
+    stats = a.data["fundamentals"]["stats"]
     use_llm = a.mode.startswith("LLM")
+    cur = prof.get("currency")
+    bench = a.data.get("benchmark")
     chart = m.indicators.add_indicator_columns(a.history).iloc[-250:]
     return {
         "ticker": a.ticker,
@@ -67,12 +70,30 @@ def build_report(ticker: str) -> dict:
                    "sma20": _f(row["SMA20"], 2), "sma50": _f(row["SMA50"], 2),
                    "sma200": _f(row["SMA200"], 2)} for d, row in chart.iterrows()],
         "markdown": m.pipeline.to_markdown(a),
+        # India-first additions (API.md section 9)
+        "normalized_ticker": a.ticker,
+        "sector": prof.get("sector"),
+        "industry": prof.get("industry"),
+        "market_cap_display": (m.india.format_money(stats["marketCap"], cur, compact=True)
+                               if stats.get("marketCap") else None),
+        "as_of_ist": a.data["as_of"]["as_of_ist"],
+        "display": {"last_close": m.india.format_money(ind["last_close"], cur)},
+        "benchmark": None if not bench else {
+            "symbol": bench["symbol"], "name": bench["name"],
+            **{f"{w}_return_{p}": _f(bench.get(f"{w}_return_{p}"))
+               for p in ("1m", "3m", "1y") for w in ("stock", "index")},
+            "beta": _f(bench.get("beta"), 3),
+            "relative_strength_1y": _f(bench.get("relative_strength_1y")),
+        },
     }
 
 
 @router.get("/{ticker}/report")
 def report(ticker: str):
-    t = ticker.strip().upper()
+    try:
+        t = ns().india.normalize_ticker(ticker[:60])
+    except ValueError:
+        t = ""
     if not TICKER_RE.match(t):
         raise HTTPException(404, f"No price data found for '{ticker}'.")
     with _guard:

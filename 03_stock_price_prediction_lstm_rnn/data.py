@@ -18,15 +18,40 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
+from india import cache_is_stale
+
 warnings.filterwarnings("ignore", module="yfinance")  # pandas deprecation noise inside yfinance
 
 DATA_DIR = Path(__file__).parent / "data"
 
 
-def load_prices(ticker: str, start: str = "2015-01-01", refresh: bool = False) -> pd.Series:
-    """Daily (split/dividend adjusted) closing prices, cached to data/<ticker>.csv."""
+def cache_path(ticker: str) -> Path:
+    return DATA_DIR / f"{ticker.replace('^', '_')}.csv"
+
+
+def is_stale(ticker: str) -> bool:
+    """Should the cached CSV be re-downloaded? Market-hours aware (see india.cache_is_stale):
+    every 5 min while the exchange is open, otherwise only when a newer session has closed."""
+    cache = cache_path(ticker)
+    if not cache.exists():
+        return True
+    try:
+        last = pd.read_csv(cache, index_col=0, parse_dates=True, usecols=[0]).index[-1].date()
+    except Exception:
+        return True
+    return cache_is_stale(ticker, last, cache.stat().st_mtime)
+
+
+def load_prices(ticker: str, start: str = "2015-01-01", refresh: bool | str = False) -> pd.Series:
+    """Daily (split/dividend adjusted) closing prices, cached to data/<ticker>.csv.
+
+    refresh: True = always re-download, False = use the cache if present,
+    "auto" = re-download only when `is_stale` says the cache is out of date.
+    """
     DATA_DIR.mkdir(exist_ok=True)
-    cache = DATA_DIR / f"{ticker.replace('^', '_')}.csv"
+    cache = cache_path(ticker)
+    if refresh == "auto":
+        refresh = is_stale(ticker)
     if cache.exists() and not refresh:
         df = pd.read_csv(cache, index_col=0, parse_dates=True)
     else:

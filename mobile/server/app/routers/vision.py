@@ -10,7 +10,7 @@ from starlette.concurrency import run_in_threadpool
 
 from .. import loader
 from ..imaging import read_image, to_b64_jpeg
-from ..settings import OBJECTS_DEVICE
+from ..settings import OBJECTS_DEVICE, SLIM
 
 faces_router = APIRouter(prefix="/api/faces", tags=["faces"])
 objects_router = APIRouter(prefix="/api/objects", tags=["objects"])
@@ -95,15 +95,37 @@ def objects_ns():
     return loader.get("objects", ["config", "detector"])
 
 
-@lru_cache(maxsize=None)
 def yolo(model: str):
+    """Full profile: ultralytics on the .pt weights. Slim: ONNX Runtime on the exported .onnx
+    (same boxes, scores and drawing; see app/yolo_onnx.py)."""
+    return _yolo_onnx(model) if SLIM else _yolo_torch(model)
+
+
+@lru_cache(maxsize=None)
+def _yolo_torch(model: str):
     return objects_ns().detector.Detector(model, device=OBJECTS_DEVICE), threading.Lock()
+
+
+@lru_cache(maxsize=1)  # 512 MB budget: keep only the most recently used YOLO session
+def _yolo_onnx(model: str):
+    import gc
+
+    from ..yolo_onnx import OnnxYolo
+
+    gc.collect()
+    path = loader.project_dir("objects") / "weights" / model.replace(".pt", ".onnx")
+    return OnnxYolo(path), threading.Lock()
+
+
+@lru_cache(maxsize=1)
+def _class_names() -> tuple[str, ...]:
+    names = yolo(YOLO_MODELS[0])[0].names
+    return tuple(names[i] for i in sorted(names))
 
 
 @objects_router.get("/classes")
 def classes():
-    det, _ = yolo(YOLO_MODELS[0])
-    return {"classes": [det.names[i] for i in sorted(det.names)], "models": YOLO_MODELS}
+    return {"classes": list(_class_names()), "models": YOLO_MODELS}
 
 
 @objects_router.post("/detect")

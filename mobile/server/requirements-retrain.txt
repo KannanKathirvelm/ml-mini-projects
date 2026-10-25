@@ -1,0 +1,9 @@
+# Nightly retrain of the universal stock models (scripts/nightly_retrain.sh).
+# torch is installed separately from the CPU wheel index:
+#   pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+numpy==2.5.4
+pandas==3.1.0
+yfinance==1.7.0
+onnx==1.23.2
+onnxruntime==1.31.0
+onnxscript==0.7.2

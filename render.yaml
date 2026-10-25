@@ -1,0 +1,34 @@
+# Render Blueprint: one free web service running the slim (torch-free) API server.
+# Render dashboard -> New -> Blueprint -> pick this repo. Free plan: 512 MB RAM, sleeps after
+# ~15 min without traffic (the first request after that takes ~30-60 s to wake it up).
+services:
+  - type: web
+    name: ml-mini-projects
+    runtime: python
+    plan: free
+    rootDir: mobile/server
+    buildCommand: >-
+      pip install --no-cache-dir -r requirements-render.txt &&
+      python scripts/build_models.py --sklearn-if-broken --clean-data
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.4
+      - key: SERVER_PROFILE
+        value: slim
+      - key: PRELOAD
+        value: "0"
+      - key: SERVER_DATA_DIR
+        value: /tmp/ml-mini-projects
+      - key: PRICES_DB_PATH
+        value: /tmp/ml-mini-projects/prices.db
+      - key: MPLCONFIGDIR
+        value: /tmp/matplotlib
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: MALLOC_ARENA_MAX
+        value: "2"
+      # Optional: add ANTHROPIC_API_KEY as a secret env var in the Render dashboard to switch
+      # /api/finance to LLM mode. Never commit it here.

@@ -78,3 +78,25 @@ def compute_indicators(df: pd.DataFrame) -> dict:
         "return_6m": _ret(close, 126),
         "return_1y": _ret(close, TRADING_DAYS),
     }
+
+
+def benchmark_stats(stock: pd.Series, index: pd.Series) -> dict:
+    """Stock vs index: returns over 1m/3m/1y, beta and relative strength.
+
+    Beta is cov(stock, index) / var(index) on about one year of daily returns,
+    using only days both traded (NSE and US holidays differ). Relative strength
+    is (1 + stock 1y return) / (1 + index 1y return) - 1: > 0 means the stock
+    beat the index over the year.
+    """
+    both = pd.concat([stock, index], axis=1, join="inner").dropna()
+    both.columns = ["stock", "index"]
+    out = {}
+    for label, days in (("1m", 21), ("3m", 63), ("1y", TRADING_DAYS)):
+        out[f"stock_return_{label}"] = _ret(both["stock"], days)
+        out[f"index_return_{label}"] = _ret(both["index"], days)
+    rets = both.pct_change().dropna().iloc[-TRADING_DAYS:]
+    var = rets["index"].var()
+    out["beta"] = float(rets["stock"].cov(rets["index"]) / var) if len(rets) > 60 and var > 0 else None
+    s, i = out["stock_return_1y"], out["index_return_1y"]
+    out["relative_strength_1y"] = (1 + s) / (1 + i) - 1 if s is not None and i is not None else None
+    return out

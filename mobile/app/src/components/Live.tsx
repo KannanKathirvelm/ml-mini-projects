@@ -9,7 +9,7 @@ import { ApiError, api } from '../api/client';
 import { live } from '../api/live';
 import type { Intraday, MarketStatus, Quote } from '../api/types';
 import { LineChart } from './Chart';
-import { currencyOf, money } from './Widgets';
+import { currencyOf, fmtIst, istToday, money } from './Widgets';
 
 // ---------- market status (shared, refreshed every 5 min) ----------
 let statusCache: { data: MarketStatus | null; at: number } = { data: null, at: 0 };
@@ -58,7 +58,7 @@ export const ChangeText: React.FC<{ q: Quote; cur: string }> = ({ q, cur }) => {
     <span className={up ? 'chg up' : 'chg down'}>
       <IonIcon icon={up ? caretUp : caretDown} />
       {q.display?.change ?? (q.change !== null ? `${sign(q.change)}${money(q.change, cur).replace(/^([₹$])-/, '-$1')}` : '')}
-      {q.change_pct !== null ? ` (${sign(q.change_pct)}${q.change_pct.toFixed(2)}%)` : ''}
+      {q.change_pct !== null && !String(q.display?.change ?? '').includes('%') ? ` (${sign(q.change_pct)}${q.change_pct.toFixed(2)}%)` : ''}
     </span>
   );
 };
@@ -77,7 +77,8 @@ export const QuoteHeader: React.FC<{ ticker: string; refreshKey?: number }> = ({
   }, [ticker]);
   useEffect(() => { setQ(null); setErr(null); load(); }, [load]);
   useEffect(() => { if (refreshKey) { load(); refreshStatus(true); } }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  usePoll(load, 30_000, open === true);
+  const polling = open === true || q?.market_open === true;
+  usePoll(load, 30_000, polling);
   if (missing) return null;
   const cur = currencyOf(ticker, q?.currency);
   return (
@@ -94,7 +95,12 @@ export const QuoteHeader: React.FC<{ ticker: string; refreshKey?: number }> = ({
           <>
             <div className="quote-price">{q.display?.price ?? money(q.price, cur)}</div>
             <ChangeText q={q} cur={cur} />
-            <IonNote className="small">{q.as_of_ist ? `as of ${q.as_of_ist}` : 'latest'} · may be delayed{open ? ' · refreshes every 30 s' : ''}</IonNote>
+            {(q.high !== null && q.high !== undefined) || (q.low !== null && q.low !== undefined) ? (
+              <IonNote className="small quote-range">Day range {money(q.low, cur)} – {money(q.high, cur)}{q.open !== null && q.open !== undefined ? ` · open ${money(q.open, cur)}` : ''}</IonNote>
+            ) : null}
+            <IonNote className="small" title={q.delayed_note ?? undefined}>
+              {q.as_of_ist ? `as of ${fmtIst(q.as_of_ist)}` : 'latest'} · {q.source ?? 'may be delayed'}{polling ? ' · refreshes every 30 s' : ''}
+            </IonNote>
           </>
         ) : err ? <IonNote color="danger" className="small">Live quote unavailable: {err}</IonNote> : <IonNote className="small">Loading live quote…</IonNote>}
       </IonCardContent>
@@ -105,7 +111,7 @@ export const QuoteHeader: React.FC<{ ticker: string; refreshKey?: number }> = ({
 export const MarketPillInline: React.FC = () => {
   const { data, open } = useMarketStatus();
   if (!data) return null;
-  const next = open ? data.next_close_ist ?? data.next_close : data.next_open_ist ?? data.next_open;
+  const next = fmtIst(open ? data.next_close_ist ?? data.next_close : data.next_open_ist ?? data.next_open, true);
   return (
     <div className={`pill ${open ? 'open' : 'closed'}`} title={next ? `${open ? 'Closes' : 'Opens'} ${next}` : undefined}>
       <span className="dot" />{data.exchange ?? 'NSE'} {open ? 'Open' : 'Closed'}
@@ -115,6 +121,11 @@ export const MarketPillInline: React.FC = () => {
 };
 
 // ---------- intraday chart ----------
+const sessionLabel = (d: Intraday | null) => {
+  if (!d?.session_date || d.session_date === istToday()) return 'Today';
+  return `Last session ${fmtIst(`${d.session_date}T00:00`)?.replace(/, 00:00 IST$/, '')}`;
+};
+
 export const IntradayCard: React.FC<{ ticker: string; refreshKey?: number }> = ({ ticker, refreshKey }) => {
   const { open } = useMarketStatus();
   const [interval, setIntervalV] = useState<'1m' | '5m'>('5m');
@@ -129,7 +140,7 @@ export const IntradayCard: React.FC<{ ticker: string; refreshKey?: number }> = (
   }, [ticker, interval]);
   useEffect(() => { setD(null); load(); }, [load]);
   useEffect(() => { if (refreshKey) { load(); refreshStatus(true); } }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  usePoll(load, 60_000, open === true);
+  usePoll(load, 60_000, open === true || d?.market_open === true);
   const chart = useMemo(() => {
     if (!d?.points.length) return null;
     const labels = d.points.map((p) => (p.t.length > 8 ? p.t.slice(11, 16) || p.t : p.t));
@@ -142,7 +153,7 @@ export const IntradayCard: React.FC<{ ticker: string; refreshKey?: number }> = (
     <IonCard>
       <IonCardHeader>
         <div className="agent-head">
-          <IonCardSubtitle>Today{d?.as_of_ist ? ` · as of ${d.as_of_ist}` : ''}</IonCardSubtitle>
+          <IonCardSubtitle>{sessionLabel(d)}{d?.as_of_ist ? ` · as of ${fmtIst(d.as_of_ist)}` : ''}</IonCardSubtitle>
           <IonSegment value={interval} onIonChange={(e) => setIntervalV(e.detail.value as '1m' | '5m')} style={{ width: 120 }}>
             <IonSegmentButton value="1m"><IonLabel>1m</IonLabel></IonSegmentButton>
             <IonSegmentButton value="5m"><IonLabel>5m</IonLabel></IonSegmentButton>
@@ -153,6 +164,7 @@ export const IntradayCard: React.FC<{ ticker: string; refreshKey?: number }> = (
         {chart ? <LineChart labels={chart.labels} series={chart.series} height={180} />
           : err ? <IonNote color="danger" className="small">{err}</IonNote>
             : <IonNote className="small">{d ? 'No trades yet today.' : 'Loading intraday…'}</IonNote>}
+        {d?.source && <IonNote className="small">{d.source}</IonNote>}
       </IonCardContent>
     </IonCard>
   );
@@ -183,15 +195,20 @@ export const WatchlistCard: React.FC<{ onOpen: (s: string) => void; refreshKey?:
   const { list, remove } = useWatchlist();
   const { open } = useMarketStatus();
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
+  const [failed, setFailed] = useState<Record<string, string>>({});
   const [missing, setMissing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const load = useCallback(async () => {
     if (!list.length) return;
     try {
-      const qs = await live.quotes(list);
+      const { quotes: qs, errors } = await live.quotes(list);
       const m: Record<string, Quote> = {};
       qs.forEach((q) => { m[q.symbol.toUpperCase()] = q; });
-      setQuotes(m); setErr(null);
+      // The server echoes the normalised symbol ("reliance" -> RELIANCE.NS); map typed entries onto it.
+      list.forEach((s) => { const S = s.toUpperCase(); if (!m[S] && m[`${S}.NS`]) m[S] = m[`${S}.NS`]; });
+      const f: Record<string, string> = {};
+      errors.forEach((e) => { f[e.symbol.toUpperCase()] = e.detail; });
+      setQuotes(m); setFailed(f); setErr(null);
     } catch (e) {
       if (e instanceof ApiError && e.status === 404 && /not found/i.test(e.message)) setMissing(true);
       else setErr((e as Error).message);
@@ -218,7 +235,7 @@ export const WatchlistCard: React.FC<{ onOpen: (s: string) => void; refreshKey?:
                     <p>{s}</p>
                   </IonLabel>
                   <div slot="end" className="wl-right">
-                    <div className="wl-price">{q && q.price !== null ? q.display?.price ?? money(q.price, cur) : missing ? '' : '…'}</div>
+                    <div className="wl-price" title={failed[s.toUpperCase()]}>{q && q.price !== null ? q.display?.price ?? money(q.price, cur) : missing ? '' : failed[s.toUpperCase()] ? 'n/a' : '…'}</div>
                     {q && <ChangeText q={q} cur={cur} />}
                   </div>
                   <IonButton slot="end" fill="clear" color="medium" size="small" aria-label={`Remove ${s}`} onClick={(e) => { e.stopPropagation(); remove(s); }}>

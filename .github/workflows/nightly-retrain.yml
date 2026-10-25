@@ -1,0 +1,60 @@
+# Retrains the pooled "universal" India RNN/LSTM stock models after the NSE close and commits the
+# refreshed model files to main (see mobile/server/CI.md). The push is made with GITHUB_TOKEN, so it does
+# not trigger other workflows (no loops); Render auto-deploys the new models from that push.
+name: Nightly retrain (India universal models)
+
+on:
+  schedule:
+    - cron: "30 11 * * 1-5" # 11:30 UTC = 17:00 IST, Monday to Friday, after the 15:30 IST close
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly-retrain
+  cancel-in-progress: false
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: mobile/server/requirements-retrain.txt
+
+      - name: Retrain, export to ONNX and verify
+        env:
+          PYTHON: python
+        run: bash mobile/server/scripts/nightly_retrain.sh
+
+      - name: Commit changed model files
+        run: |
+          shopt -s nullglob
+          paths=(
+            03_stock_price_prediction_lstm_rnn/models
+            03_stock_price_prediction_lstm_rnn/data/nse_equities*
+            04_financial_ai_agents/data
+            mobile/server/projects/03_stock_price_prediction_lstm_rnn/models
+            mobile/server/projects/0*/data/nse_equities*
+          )
+          for p in "${paths[@]}"; do
+            [ -e "$p" ] && { git add -A -- "$p" || echo "::warning::could not add $p"; }
+          done
+          if git diff --cached --quiet; then
+            echo "No model changes; nothing to commit."
+            exit 0
+          fi
+          git diff --cached --stat
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Nightly retrain of India universal stock models ($(TZ=Asia/Kolkata date +%F))"
+          git pull --rebase origin main
+          git push origin HEAD:main

@@ -29,7 +29,8 @@ def is_jpeg_b64(s: str) -> bool:
 def test_health(client):
     r = client.get("/health")
     assert r.json() == {"status": "ok", "version": "1", "projects": [
-        "credit-card", "upi", "stocks", "finance", "prices", "faces", "objects"]}
+        "credit-card", "upi", "stocks", "finance", "prices", "faces", "objects", "india"],
+        "profile": "full"}
 
 
 def test_cors(client):
@@ -88,7 +89,8 @@ def test_stocks(client):
     r = client.get("/api/stocks/AAPL/forecast", params={"days": 5})
     assert r.status_code == 200, r.text
     b = r.json()
-    assert set(b) == {"ticker", "last_close", "last_date", "history", "forecast", "metrics", "test"}
+    assert {"ticker", "last_close", "last_date", "history", "forecast", "metrics", "test"} <= set(b)
+    assert b["model"] == "per_ticker" and b["currency"] == "USD" and b["display"]["last_close"].startswith("$")
     assert len(b["history"]) == 90 and len(b["forecast"]) == 5
     assert set(b["forecast"][0]) == {"date", "rnn", "lstm"}
     assert set(b["metrics"]) == {"naive_baseline", "rnn", "lstm"}
@@ -121,7 +123,7 @@ def test_finance(client):
     keys = {"ticker", "company", "mode", "mode_label", "currency", "last_close", "last_date",
             "outlook", "confidence", "summary", "bullish", "bearish", "risks", "overall", "agents",
             "headlines", "indicators", "chart", "markdown"}
-    assert set(b) == keys
+    assert keys <= set(b)
     assert b["mode"] in ("offline", "llm") and b["outlook"] in ("bullish", "neutral", "bearish")
     assert b["confidence"] in ("low", "medium", "high")
     assert [a["name"] for a in b["agents"]] == ["Technical Analyst", "Fundamental Analyst",

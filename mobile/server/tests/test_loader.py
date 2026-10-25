@@ -9,12 +9,13 @@ from app import loader
 
 CLASHING = {"predict", "train", "data", "features", "config", "generate_data", "model",
             "detector", "detectors", "draw", "db", "search", "history", "stores", "llm",
-            "agents", "pipeline", "indicators", "data_tools", "matching", "alerts"}
+            "agents", "pipeline", "indicators", "data_tools", "matching", "alerts", "india",
+            "universal", "onnx_model"}
 
 SPECS = {
     "credit-card": ["predict", "generate_data", "train"],
     "upi": ["predict", "features", "generate_data", "train"],
-    "stocks": ["train", "data", "model", "predict"],
+    "stocks": ["train", "data", "model", "predict", "universal", "onnx_model", "india"],
     "finance": ["llm", "indicators", "data_tools", "agents", "pipeline"],
     "prices": ["config", "matching", "stores", "db", "search", "history", "alerts"],
     "faces": ["detectors", "draw"],

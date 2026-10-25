@@ -2,14 +2,14 @@ import {
   IonButton, IonCard, IonCardContent, IonCardHeader, IonCardSubtitle, IonCardTitle, IonChip, IonIcon, IonItem, IonLabel,
   IonList, IonNote, IonProgressBar, IonRange,
 } from '@ionic/react';
-import { bulbOutline, listOutline, schoolOutline, trendingUpOutline } from 'ionicons/icons';
+import { bulbOutline, globeOutline, listOutline, schoolOutline, trendingUpOutline } from 'ionicons/icons';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import type { ForecastMetric, StockForecast, StockTickers } from '../api/types';
 import { LineChart } from '../components/Chart';
 import { Page } from '../components/Page';
 import { AsyncStatus, Empty, ErrorCard } from '../components/Status';
-import { currencyOf, money, num } from '../components/Widgets';
+import { currencyOf, fmtIst, money, num } from '../components/Widgets';
 import { MarketStatusPill, PopularIndian, TickerSearch } from '../components/India';
 import { IntradayCard, QuoteHeader, WatchlistCard, useSelectedTicker, useWatchlist } from '../components/Live';
 import { useIonRouter } from '@ionic/react';
@@ -64,13 +64,26 @@ const ForecastPage: React.FC = () => {
   const load = (t: string, d: number) => { train.reset(); fc.run(() => api.stocks.forecast(t, d)); };
   useEffect(() => { if (ticker) load(ticker, days); }, [ticker]); // eslint-disable-line
 
-  const notTrained = fc.error instanceof ApiError && fc.error.status === 404;
+  // Servers with the universal India model (API.md section 9) forecast any symbol, so a 404 there means
+  // "no price data", not "not trained yet". Older servers: 404 = train this ticker first.
+  const universalServer = tickers.data?.universal === true;
+  const notTrained = fc.error instanceof ApiError && fc.error.status === 404 && !universalServer;
   const data = train.data ?? fc.data;
+  const [trainNote, setTrainNote] = useState<string | null>(null);
+  useEffect(() => setTrainNote(null), [ticker]);
 
   const doTrain = async () => {
+    setTrainNote(null);
     const r = await train.run(() => api.stocks.train(ticker));
-    if (r) { tickers.reload(); train.reset(); fc.run(() => (days === 10 ? Promise.resolve(r) : api.stocks.forecast(ticker, days))); }
+    if (r) {
+      if (r.trained === false) setTrainNote('This (hosted) server does not train at runtime, so it shows the universal India model forecast instead.');
+      tickers.reload(); train.reset(); fc.run(() => (days === 10 ? Promise.resolve(r) : api.stocks.forecast(ticker, days)));
+    }
   };
+  const isUniversal = data?.model === 'universal';
+  const shown = data?.normalized_ticker ?? data?.ticker ?? ticker;
+  const uInfo = data?.model_info ?? tickers.data?.universal_info ?? null;
+  const universalLabel = `Universal India model (trained on ~${uInfo?.trained_on ?? 50} NSE stocks)`;
 
   const chart = useMemo(() => {
     if (!data) return null;
@@ -97,8 +110,8 @@ const ForecastPage: React.FC = () => {
       <IonCard>
         <IonCardContent>
           <TickerSearch onPick={(t) => (t === ticker ? load(t, days) : setTicker(t))} onAdd={wl.add} isAdded={wl.has} />
-          {!wl.has(ticker) && <IonButton size="small" fill="clear" onClick={() => wl.add(ticker)}>＋ Add {ticker} to watchlist</IonButton>}
-          <IonNote className="small">Already trained on the server</IonNote>
+          {!wl.has(shown) && <IonButton size="small" fill="clear" onClick={() => wl.add(shown)}>＋ Add {shown} to watchlist</IonButton>}
+          <IonNote className="small">{universalServer ? 'Own per-ticker models (every other NSE stock uses the universal model)' : 'Already trained on the server'}</IonNote>
           <div className="chip-row">
             {(tickers.data?.trained ?? []).map((t) => (
               <IonChip key={t} color={t === ticker ? 'primary' : undefined} outline={t !== ticker} onClick={() => setTicker(t)}><IonLabel>{t}</IonLabel></IonChip>
@@ -117,6 +130,7 @@ const ForecastPage: React.FC = () => {
 
       {train.loading && <TrainProgress />}
       {train.error && <ErrorCard error={train.error} />}
+      {trainNote && <IonCard color="light"><IonCardContent className="small">{trainNote}</IonCardContent></IonCard>}
       {!train.loading && <AsyncStatus loading={fc.loading} slow={fc.slow} error={notTrained ? null : fc.error} onRetry={() => load(ticker, days)} loadingLabel={`Loading ${ticker}…`} />}
       {notTrained && !train.loading && (
         <IonCard>
@@ -131,15 +145,28 @@ const ForecastPage: React.FC = () => {
         <>
           <IonCard>
             <IonCardHeader>
-              <IonCardSubtitle>{data.name ? `${data.name} · ` : ''}{data.ticker} · last close {data.last_date}{data.as_of_ist ? ` · as of ${data.as_of_ist}` : ''}</IonCardSubtitle>
+              <IonCardSubtitle>{data.name ? `${data.name} · ` : ''}{shown} · last close {data.last_date}{data.as_of_ist ? ` · as of ${fmtIst(data.as_of_ist)}` : ''}</IonCardSubtitle>
               <IonCardTitle className="big-number">{data.display?.last_close ?? money(data.last_close, cur)}</IonCardTitle>
               {last && <IonNote>In {data.forecast.length} trading days: RNN {money(last.rnn, cur)} · LSTM {money(last.lstm, cur)}</IonNote>}
+              {data.model && (
+                <div className="chip-row">
+                  <IonChip outline color={isUniversal ? 'tertiary' : 'primary'} title={uInfo?.note ?? undefined}>
+                    <IonIcon icon={isUniversal ? globeOutline : schoolOutline} />
+                    <IonLabel>{isUniversal ? universalLabel : `Model trained on ${shown}`}</IonLabel>
+                  </IonChip>
+                </div>
+              )}
+              {isUniversal && (
+                <IonNote className="small">
+                  One RNN and one LSTM trained on liquid NSE stocks pooled together{uInfo?.trained_until ? ` (training data up to ${uInfo.trained_until})` : ''}. It works for any stock with about 3 months of history, so no per-stock training is needed.
+                </IonNote>
+              )}
             </IonCardHeader>
             <IonCardContent><LineChart labels={chart.labels} series={chart.series} height={260} /></IonCardContent>
           </IonCard>
 
           <IonCard>
-            <IonCardHeader><IonCardTitle>How good is it?</IonCardTitle><IonCardSubtitle>One-day-ahead error on the test period</IonCardSubtitle></IonCardHeader>
+            <IonCardHeader><IonCardTitle>How good is it?</IonCardTitle><IonCardSubtitle>{isUniversal ? `One-day-ahead error: live back-test of the universal model on ${shown}'s last ~120 trading days` : 'One-day-ahead error on the test period'}</IonCardSubtitle></IonCardHeader>
             <IonCardContent>
               <MetricsTable m={data.metrics} />
               {data.test.dates.length > 0 && (
@@ -163,9 +190,11 @@ const ForecastPage: React.FC = () => {
               learning demo, not a trading signal.
             </IonCardContent>
           </IonCard>
-          <IonButton expand="block" fill="outline" onClick={doTrain} disabled={train.loading}>
-            <IonIcon slot="start" icon={schoolOutline} />Retrain {data.ticker} (~1 min)
-          </IonButton>
+          {!isUniversal && (
+            <IonButton expand="block" fill="outline" onClick={doTrain} disabled={train.loading}>
+              <IonIcon slot="start" icon={schoolOutline} />Retrain {shown} (~1 min)
+            </IonButton>
+          )}
         </>
       )}
       <p className="disclaimer">Educational demo. Not financial advice.</p>

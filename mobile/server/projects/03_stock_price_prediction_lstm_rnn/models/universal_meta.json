@@ -1,0 +1,1531 @@
+{
+ "kind": "universal",
+ "window": 60,
+ "scale_lookback": 750,
+ "cells": [
+  "rnn",
+  "lstm"
+ ],
+ "start": "2015-01-01",
+ "train_symbols": [
+  "ADANIENT.NS",
+  "ADANIPORTS.NS",
+  "APOLLOHOSP.NS",
+  "ASIANPAINT.NS",
+  "AXISBANK.NS",
+  "BAJAJ-AUTO.NS",
+  "BAJAJFINSV.NS",
+  "BAJFINANCE.NS",
+  "BEL.NS",
+  "BHARTIARTL.NS",
+  "BRITANNIA.NS",
+  "CIPLA.NS",
+  "COALINDIA.NS",
+  "DIVISLAB.NS",
+  "DRREDDY.NS",
+  "EICHERMOT.NS",
+  "GRASIM.NS",
+  "HCLTECH.NS",
+  "HDFCBANK.NS",
+  "HDFCLIFE.NS",
+  "HEROMOTOCO.NS",
+  "HINDALCO.NS",
+  "HINDUNILVR.NS",
+  "ICICIBANK.NS",
+  "INDUSINDBK.NS",
+  "INFY.NS",
+  "ITC.NS",
+  "JSWSTEEL.NS",
+  "KOTAKBANK.NS",
+  "LT.NS",
+  "M&M.NS",
+  "MARUTI.NS",
+  "NESTLEIND.NS",
+  "NTPC.NS",
+  "ONGC.NS",
+  "POWERGRID.NS",
+  "RELIANCE.NS",
+  "SBILIFE.NS",
+  "SBIN.NS",
+  "SHRIRAMFIN.NS",
+  "SUNPHARMA.NS",
+  "TATACONSUM.NS",
+  "TATASTEEL.NS",
+  "TCS.NS",
+  "TECHM.NS",
+  "TITAN.NS",
+  "TMPV.NS",
+  "TRENT.NS",
+  "ULTRACEMCO.NS",
+  "WIPRO.NS"
+ ],
+ "holdout_symbols": [
+  "BERGEPAINT.NS",
+  "DABUR.NS",
+  "GODREJCP.NS",
+  "HAVELLS.NS",
+  "LUPIN.NS",
+  "MARICO.NS",
+  "PIDILITIND.NS",
+  "SIEMENS.NS"
+ ],
+ "skipped": [],
+ "last_date": "2026-10-23",
+ "val_start": "2024-10-23",
+ "test_start": "2025-10-23",
+ "n_windows": {
+  "train": 116612,
+  "val": 12400
+ },
+ "eval": {
+  "held_out_time": {
+   "n_stocks": 50,
+   "n_days": 12400,
+   "up_days_pct": 48.25,
+   "naive_baseline": {
+    "mape_pct": 1.1607126948479516,
+    "rmse_return_pct": 1.6414242773207792,
+    "direction_acc_pct": null,
+    "mean_rmse_ratio_vs_naive": 1.0,
+    "stocks_beating_naive_rmse": 0
+   },
+   "rnn": {
+    "mape_pct": 1.1638247062882792,
+    "rmse_return_pct": 1.6434577114710098,
+    "direction_acc_pct": 48.612903225806456,
+    "mean_rmse_ratio_vs_naive": 1.0015682106224124,
+    "stocks_beating_naive_rmse": 10
+   },
+   "lstm": {
+    "mape_pct": 1.1646346023694865,
+    "rmse_return_pct": 1.6430480787019777,
+    "direction_acc_pct": 48.24193548387097,
+    "mean_rmse_ratio_vs_naive": 1.0019865747684045,
+    "stocks_beating_naive_rmse": 5
+   },
+   "kind": "held-out time (training stocks, test year)"
+  },
+  "held_out_stocks": {
+   "n_stocks": 8,
+   "n_days": 1983,
+   "up_days_pct": 47.755925365607666,
+   "naive_baseline": {
+    "mape_pct": 1.1446774278294831,
+    "rmse_return_pct": 1.5657591553397674,
+    "direction_acc_pct": null,
+    "mean_rmse_ratio_vs_naive": 1.0,
+    "stocks_beating_naive_rmse": 0
+   },
+   "rnn": {
+    "mape_pct": 1.1474998113918522,
+    "rmse_return_pct": 1.5687350602592045,
+    "direction_acc_pct": 48.71406959152799,
+    "mean_rmse_ratio_vs_naive": 1.0022376669157471,
+    "stocks_beating_naive_rmse": 2
+   },
+   "lstm": {
+    "mape_pct": 1.1482550078003642,
+    "rmse_return_pct": 1.5676286160156994,
+    "direction_acc_pct": 47.907211296016136,
+    "mean_rmse_ratio_vs_naive": 1.0017180065719327,
+    "stocks_beating_naive_rmse": 0
+   },
+   "kind": "held-out stocks (never trained on, test year)"
+  }
+ },
+ "per_stock": {
+  "held_out_time": {
+   "RELIANCE.NS": {
+    "naive_baseline": {
+     "rmse": 18.213647059099408,
+     "mae": 13.774270826770413,
+     "mape_pct": 1.0148669547170721,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 18.210177060864694,
+     "mae": 13.761211284668574,
+     "mape_pct": 1.0142132762810039,
+     "direction_acc_pct": 50.403225806451616
+    },
+    "lstm": {
+     "rmse": 18.277452136772006,
+     "mae": 13.82287725497918,
+     "mape_pct": 1.0187800488466983,
+     "direction_acc_pct": 47.17741935483871
+    },
+    "days": 248,
+    "scale": 0.014672951245803919
+   },
+   "TCS.NS": {
+    "naive_baseline": {
+     "rmse": 46.42769031183262,
+     "mae": 33.110959945186494,
+     "mape_pct": 1.3429078529904082,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 46.431083332840394,
+     "mae": 33.126515574702076,
+     "mape_pct": 1.3440148523001858,
+     "direction_acc_pct": 47.17741935483871
+    },
+    "lstm": {
+     "rmse": 46.52006167560214,
+     "mae": 33.226435190850765,
+     "mape_pct": 1.348120567837079,
+     "direction_acc_pct": 46.37096774193548
+    },
+    "days": 248,
+    "scale": 0.013109117893960166
+   },
+   "HDFCBANK.NS": {
+    "naive_baseline": {
+     "rmse": 11.155023776646306,
+     "mae": 8.283210016066029,
+     "mape_pct": 1.0329157952209118,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 11.239546788094604,
+     "mae": 8.368791003649802,
+     "mape_pct": 1.0438502325813137,
+     "direction_acc_pct": 41.53225806451613
+    },
+    "lstm": {
+     "rmse": 11.22489098902787,
+     "mae": 8.372913402072012,
+     "mape_pct": 1.0439136635126853,
+     "direction_acc_pct": 40.725806451612904
+    },
+    "days": 248,
+    "scale": 0.013822379871503549
+   },
+   "ICICIBANK.NS": {
+    "naive_baseline": {
+     "rmse": 16.571691732514452,
+     "mae": 12.90679685531124,
+     "mape_pct": 0.9640089736271951,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 16.58889187981409,
+     "mae": 12.945734263612717,
+     "mape_pct": 0.9669987573023078,
+     "direction_acc_pct": 48.38709677419355
+    },
+    "lstm": {
+     "rmse": 16.59023273650124,
+     "mae": 12.952851566270297,
+     "mape_pct": 0.9676905099232457,
+     "direction_acc_pct": 48.38709677419355
+    },
+    "days": 248,
+    "scale": 0.013358179942105624
+   },
+   "INFY.NS": {
+    "naive_baseline": {
+     "rmse": 24.499217005188427,
+     "mae": 17.718504874936997,
+     "mape_pct": 1.4342620701475537,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 24.55373768612826,
+     "mae": 17.776836000943604,
+     "mape_pct": 1.4391916293867244,
+     "direction_acc_pct": 48.79032258064516
+    },
+    "lstm": {
+     "rmse": 24.560930922657555,
+     "mae": 17.82163756470013,
+     "mape_pct": 1.4430725269166864,
+     "direction_acc_pct": 44.75806451612903
+    },
+    "days": 248,
+    "scale": 0.015619499561006743
+   },
+   "SBIN.NS": {
+    "naive_baseline": {
+     "rmse": 15.365322288021707,
+     "mae": 10.803597727129537,
+     "mape_pct": 1.0564350573842418,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 15.407825806398911,
+     "mae": 10.818469012463764,
+     "mape_pct": 1.0581202969000958,
+     "direction_acc_pct": 48.79032258064516
+    },
+    "lstm": {
+     "rmse": 15.384301091900191,
+     "mae": 10.79882248564567,
+     "mape_pct": 1.055972047774565,
+     "direction_acc_pct": 52.41935483870967
+    },
+    "days": 248,
+    "scale": 0.01641973804075771
+   },
+   "BHARTIARTL.NS": {
+    "naive_baseline": {
+     "rmse": 25.416392242829122,
+     "mae": 19.28152859595514,
+     "mape_pct": 1.0148140216979147,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 25.50707640495534,
+     "mae": 19.339778837861815,
+     "mape_pct": 1.0180486716543906,
+     "direction_acc_pct": 49.596774193548384
+    },
+    "lstm": {
+     "rmse": 25.459764893153274,
+     "mae": 19.316479644099072,
+     "mape_pct": 1.0169062142282315,
+     "direction_acc_pct": 50.0
+    },
+    "days": 248,
+    "scale": 0.013683281984245546
+   },
+   "ITC.NS": {
+    "naive_baseline": {
+     "rmse": 4.399318551909167,
+     "mae": 2.8760777135049143,
+     "mape_pct": 0.9563073029240353,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 4.431674184343309,
+     "mae": 2.909822335376828,
+     "mape_pct": 0.9673711871590822,
+     "direction_acc_pct": 43.95161290322581
+    },
+    "lstm": {
+     "rmse": 4.424967039309963,
+     "mae": 2.8975888821035407,
+     "mape_pct": 0.9633918368059146,
+     "direction_acc_pct": 44.354838709677416
+    },
+    "days": 248,
+    "scale": 0.012949118772022448
+   },
+   "LT.NS": {
+    "naive_baseline": {
+     "rmse": 61.216506424339336,
+     "mae": 42.566792149697584,
+     "mape_pct": 1.096418063857202,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 61.00238124923754,
+     "mae": 42.46108683599397,
+     "mape_pct": 1.093979679001646,
+     "direction_acc_pct": 51.61290322580645
+    },
+    "lstm": {
+     "rmse": 61.35511108999953,
+     "mae": 42.71761185504328,
+     "mape_pct": 1.100641088070821,
+     "direction_acc_pct": 48.79032258064516
+    },
+    "days": 248,
+    "scale": 0.015418720346457032
+   },
+   "HINDUNILVR.NS": {
+    "naive_baseline": {
+     "rmse": 30.779137644249467,
+     "mae": 22.50081314579133,
+     "mape_pct": 1.0371024685438288,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 30.84374940454821,
+     "mae": 22.61593761838331,
+     "mape_pct": 1.0428844069554857,
+     "direction_acc_pct": 44.354838709677416
+    },
+    "lstm": {
+     "rmse": 30.886130981273514,
+     "mae": 22.649658998507697,
+     "mape_pct": 1.0442119942472987,
+     "direction_acc_pct": 43.145161290322584
+    },
+    "days": 248,
+    "scale": 0.012826305392232241
+   },
+   "KOTAKBANK.NS": {
+    "naive_baseline": {
+     "rmse": 5.3647462109926325,
+     "mae": 4.0578431160219255,
+     "mape_pct": 1.012038739540412,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 5.35858237946553,
+     "mae": 4.057800002072093,
+     "mape_pct": 1.011772046471777,
+     "direction_acc_pct": 48.38709677419355
+    },
+    "lstm": {
+     "rmse": 5.372990926325262,
+     "mae": 4.0663070829171994,
+     "mape_pct": 1.013892224763797,
+     "direction_acc_pct": 49.193548387096776
+    },
+    "days": 248,
+    "scale": 0.01466366803689565
+   },
+   "AXISBANK.NS": {
+    "naive_baseline": {
+     "rmse": 19.924559355490086,
+     "mae": 14.045357488816784,
+     "mape_pct": 1.1012520430981483,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 19.97289473283733,
+     "mae": 14.039692092540518,
+     "mape_pct": 1.1008814401107572,
+     "direction_acc_pct": 48.79032258064516
+    },
+    "lstm": {
+     "rmse": 19.945896693173676,
+     "mae": 14.059281490619558,
+     "mape_pct": 1.1025122538694396,
+     "direction_acc_pct": 50.403225806451616
+    },
+    "days": 248,
+    "scale": 0.015774175474778156
+   },
+   "BAJFINANCE.NS": {
+    "naive_baseline": {
+     "rmse": 18.896437027043103,
+     "mae": 13.528679878480974,
+     "mape_pct": 1.39942356147684,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 18.932079245425673,
+     "mae": 13.560784011883003,
+     "mape_pct": 1.4030399468982209,
+     "direction_acc_pct": 48.38709677419355
+    },
+    "lstm": {
+     "rmse": 18.93515018948699,
+     "mae": 13.588214002708977,
+     "mape_pct": 1.405875519627411,
+     "direction_acc_pct": 47.17741935483871
+    },
+    "days": 248,
+    "scale": 0.017753671374212944
+   },
+   "MARUTI.NS": {
+    "naive_baseline": {
+     "rmse": 208.50862960056028,
+     "mae": 155.79815476940524,
+     "mape_pct": 1.129825458761862,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 208.8717018829699,
+     "mae": 155.626248244199,
+     "mape_pct": 1.1286005026608064,
+     "direction_acc_pct": 50.403225806451616
+    },
+    "lstm": {
+     "rmse": 209.47453018260794,
+     "mae": 156.2378107603949,
+     "mape_pct": 1.133184608243126,
+     "direction_acc_pct": 47.983870967741936
+    },
+    "days": 248,
+    "scale": 0.014909998982119465
+   },
+   "SUNPHARMA.NS": {
+    "naive_baseline": {
+     "rmse": 21.511459848583147,
+     "mae": 15.531387329101562,
+     "mape_pct": 0.8705005230608213,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 21.578890388697918,
+     "mae": 15.575486382735338,
+     "mape_pct": 0.8729749713632433,
+     "direction_acc_pct": 53.62903225806451
+    },
+    "lstm": {
+     "rmse": 21.519871661272514,
+     "mae": 15.534323019256982,
+     "mape_pct": 0.8708291723083951,
+     "direction_acc_pct": 51.20967741935484
+    },
+    "days": 248,
+    "scale": 0.01236585849020975
+   },
+   "TMPV.NS": {
+    "naive_baseline": {
+     "rmse": 6.698594936179887,
+     "mae": 4.910592109926285,
+     "mape_pct": 1.4357595019511662,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 6.727221812677507,
+     "mae": 4.929312966519616,
+     "mape_pct": 1.442574688253216,
+     "direction_acc_pct": 43.145161290322584
+    },
+    "lstm": {
+     "rmse": 6.727346935155684,
+     "mae": 4.954732272791697,
+     "mape_pct": 1.449591367500479,
+     "direction_acc_pct": 43.54838709677419
+    },
+    "days": 248,
+    "scale": 0.021018170699584244
+   },
+   "ASIANPAINT.NS": {
+    "naive_baseline": {
+     "rmse": 37.98551685401274,
+     "mae": 27.43839386970766,
+     "mape_pct": 1.0871899188307814,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 38.035370769187864,
+     "mae": 27.551416648762196,
+     "mape_pct": 1.091477725723782,
+     "direction_acc_pct": 48.79032258064516
+    },
+    "lstm": {
+     "rmse": 38.06881452830864,
+     "mae": 27.52229283477321,
+     "mape_pct": 1.0906950110710119,
+     "direction_acc_pct": 48.38709677419355
+    },
+    "days": 248,
+    "scale": 0.013824501827926782
+   },
+   "WIPRO.NS": {
+    "naive_baseline": {
+     "rmse": 3.420585821228624,
+     "mae": 2.421511434739636,
+     "mape_pct": 1.2062467622679107,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 3.433924957864621,
+     "mae": 2.4312457277184922,
+     "mape_pct": 1.21124567157311,
+     "direction_acc_pct": 49.193548387096776
+    },
+    "lstm": {
+     "rmse": 3.431450284682892,
+     "mae": 2.4305530510934115,
+     "mape_pct": 1.2112108820514995,
+     "direction_acc_pct": 47.983870967741936
+    },
+    "days": 248,
+    "scale": 0.016054699701389476
+   },
+   "HCLTECH.NS": {
+    "naive_baseline": {
+     "rmse": 25.16844183768229,
+     "mae": 17.62670209330897,
+     "mape_pct": 1.3415691220430987,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 25.17420832831776,
+     "mae": 17.62818768289515,
+     "mape_pct": 1.3426460856343108,
+     "direction_acc_pct": 48.79032258064516
+    },
+    "lstm": {
+     "rmse": 25.19101348299404,
+     "mae": 17.650374712138163,
+     "mape_pct": 1.344302451078508,
+     "direction_acc_pct": 48.79032258064516
+    },
+    "days": 248,
+    "scale": 0.014683250383653635
+   },
+   "TITAN.NS": {
+    "naive_baseline": {
+     "rmse": 63.498629686711226,
+     "mae": 45.09279607957409,
+     "mape_pct": 1.0477442871807536,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 63.5991219704201,
+     "mae": 45.251814127471896,
+     "mape_pct": 1.051573147212888,
+     "direction_acc_pct": 50.0
+    },
+    "lstm": {
+     "rmse": 63.48359432911367,
+     "mae": 45.22412294003289,
+     "mape_pct": 1.0508811671989546,
+     "direction_acc_pct": 48.79032258064516
+    },
+    "days": 248,
+    "scale": 0.015293762149171549
+   },
+   "ULTRACEMCO.NS": {
+    "naive_baseline": {
+     "rmse": 167.0397398314781,
+     "mae": 126.97224672379032,
+     "mape_pct": 1.1184542603536114,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 167.31578179293896,
+     "mae": 127.43716458905229,
+     "mape_pct": 1.1226610138456365,
+     "direction_acc_pct": 44.75806451612903
+    },
+    "lstm": {
+     "rmse": 167.2899659925109,
+     "mae": 127.08714140020595,
+     "mape_pct": 1.1197774824541378,
+     "direction_acc_pct": 50.0
+    },
+    "days": 248,
+    "scale": 0.014658166901261833
+   },
+   "NTPC.NS": {
+    "naive_baseline": {
+     "rmse": 4.3286183723540494,
+     "mae": 3.2733231821367816,
+     "mape_pct": 0.9343706973667666,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 4.331891655453025,
+     "mae": 3.274124497279226,
+     "mape_pct": 0.9349454754467058,
+     "direction_acc_pct": 50.403225806451616
+    },
+    "lstm": {
+     "rmse": 4.340995794448577,
+     "mae": 3.2875700599295623,
+     "mape_pct": 0.9386265465734357,
+     "direction_acc_pct": 47.58064516129033
+    },
+    "days": 248,
+    "scale": 0.016939963037706923
+   },
+   "POWERGRID.NS": {
+    "naive_baseline": {
+     "rmse": 3.6199949354737426,
+     "mae": 2.6190567016601562,
+     "mape_pct": 0.9395479461502931,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 3.6303258910961507,
+     "mae": 2.625271515176033,
+     "mape_pct": 0.9420742062744266,
+     "direction_acc_pct": 49.596774193548384
+    },
+    "lstm": {
+     "rmse": 3.630672419795248,
+     "mae": 2.622604185710311,
+     "mape_pct": 0.9411803611983962,
+     "direction_acc_pct": 50.403225806451616
+    },
+    "days": 248,
+    "scale": 0.0168946947804299
+   },
+   "ONGC.NS": {
+    "naive_baseline": {
+     "rmse": 3.879195045910111,
+     "mae": 2.67057732612856,
+     "mape_pct": 1.0534777878196404,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 3.8891241031548747,
+     "mae": 2.671895678529449,
+     "mape_pct": 1.0540964703536202,
+     "direction_acc_pct": 51.20967741935484
+    },
+    "lstm": {
+     "rmse": 3.8872670841709014,
+     "mae": 2.6725449531590955,
+     "mape_pct": 1.0545756691512578,
+     "direction_acc_pct": 50.806451612903224
+    },
+    "days": 248,
+    "scale": 0.02110069016906287
+   },
+   "COALINDIA.NS": {
+    "naive_baseline": {
+     "rmse": 6.240955605840995,
+     "mae": 4.3736104657573085,
+     "mape_pct": 1.0454651050861854,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 6.234631568960439,
+     "mae": 4.362062418714803,
+     "mape_pct": 1.0426972643898436,
+     "direction_acc_pct": 52.41935483870967
+    },
+    "lstm": {
+     "rmse": 6.243923652675951,
+     "mae": 4.3793601271913305,
+     "mape_pct": 1.0468089054298846,
+     "direction_acc_pct": 50.806451612903224
+    },
+    "days": 248,
+    "scale": 0.019760013098056955
+   },
+   "TATASTEEL.NS": {
+    "naive_baseline": {
+     "rmse": 3.1120345544383574,
+     "mae": 2.332523038310389,
+     "mape_pct": 1.2418370413139266,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 3.1115309519311865,
+     "mae": 2.335264018197506,
+     "mape_pct": 1.2438525462188832,
+     "direction_acc_pct": 47.58064516129033
+    },
+    "lstm": {
+     "rmse": 3.116130789120458,
+     "mae": 2.3409701903365407,
+     "mape_pct": 1.247094660040478,
+     "direction_acc_pct": 47.983870967741936
+    },
+    "days": 248,
+    "scale": 0.020169991006545398
+   },
+   "JSWSTEEL.NS": {
+    "naive_baseline": {
+     "rmse": 18.62630154625124,
+     "mae": 14.156359272618447,
+     "mape_pct": 1.1705937795677426,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 18.63286453551588,
+     "mae": 14.152172287032075,
+     "mape_pct": 1.170332961556093,
+     "direction_acc_pct": 50.403225806451616
+    },
+    "lstm": {
+     "rmse": 18.640624489869225,
+     "mae": 14.122756052608876,
+     "mape_pct": 1.168018063317355,
+     "direction_acc_pct": 52.016129032258064
+    },
+    "days": 248,
+    "scale": 0.018454120990625784
+   },
+   "HINDALCO.NS": {
+    "naive_baseline": {
+     "rmse": 17.677251526966245,
+     "mae": 13.683753475066155,
+     "mape_pct": 1.4388609898398497,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 17.689046900343477,
+     "mae": 13.634816182173598,
+     "mape_pct": 1.4336509526974772,
+     "direction_acc_pct": 55.24193548387096
+    },
+    "lstm": {
+     "rmse": 17.688730419342846,
+     "mae": 13.631883925058998,
+     "mape_pct": 1.4334134841146013,
+     "direction_acc_pct": 54.83870967741935
+    },
+    "days": 248,
+    "scale": 0.0217463115428743
+   },
+   "ADANIENT.NS": {
+    "naive_baseline": {
+     "rmse": 58.0433773582303,
+     "mae": 39.91368546024446,
+     "mape_pct": 1.6041870061090626,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 58.21479490792129,
+     "mae": 40.14344863741719,
+     "mape_pct": 1.6155382893402448,
+     "direction_acc_pct": 47.983870967741936
+    },
+    "lstm": {
+     "rmse": 58.179700470003276,
+     "mae": 40.156690226484194,
+     "mape_pct": 1.615753506063974,
+     "direction_acc_pct": 47.983870967741936
+    },
+    "days": 248,
+    "scale": 0.03456350312563944
+   },
+   "ADANIPORTS.NS": {
+    "naive_baseline": {
+     "rmse": 29.29990156619105,
+     "mae": 21.13153125393775,
+     "mape_pct": 1.3278309635155277,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 29.30015469162376,
+     "mae": 21.14943937570145,
+     "mape_pct": 1.329435107464121,
+     "direction_acc_pct": 48.79032258064516
+    },
+    "lstm": {
+     "rmse": 29.299152026732283,
+     "mae": 21.16899898414521,
+     "mape_pct": 1.3310457584273774,
+     "direction_acc_pct": 49.596774193548384
+    },
+    "days": 248,
+    "scale": 0.025796608692204882
+   },
+   "BAJAJFINSV.NS": {
+    "naive_baseline": {
+     "rmse": 29.062151608128374,
+     "mae": 21.351356752457157,
+     "mape_pct": 1.136597636294145,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 29.12171259519816,
+     "mae": 21.434853123466723,
+     "mape_pct": 1.1414737716547487,
+     "direction_acc_pct": 48.38709677419355
+    },
+    "lstm": {
+     "rmse": 29.18902849162471,
+     "mae": 21.474417375904938,
+     "mape_pct": 1.143538698642107,
+     "direction_acc_pct": 45.96774193548387
+    },
+    "days": 248,
+    "scale": 0.017169220792354153
+   },
+   "BAJAJ-AUTO.NS": {
+    "naive_baseline": {
+     "rmse": 153.62376361148043,
+     "mae": 115.67048891129032,
+     "mape_pct": 1.162653042137541,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 153.4486823247874,
+     "mae": 115.62818940766424,
+     "mape_pct": 1.1622257352624021,
+     "direction_acc_pct": 51.61290322580645
+    },
+    "lstm": {
+     "rmse": 153.5211153827464,
+     "mae": 115.68200666376869,
+     "mape_pct": 1.163002209396581,
+     "direction_acc_pct": 51.20967741935484
+    },
+    "days": 248,
+    "scale": 0.015494291252731282
+   },
+   "M&M.NS": {
+    "naive_baseline": {
+     "rmse": 53.96510541867885,
+     "mae": 41.98381780808972,
+     "mape_pct": 1.3019846290681294,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 53.96818428716846,
+     "mae": 42.093196031237284,
+     "mape_pct": 1.3053832276688155,
+     "direction_acc_pct": 45.564516129032256
+    },
+    "lstm": {
+     "rmse": 54.161516058297806,
+     "mae": 42.20859518273933,
+     "mape_pct": 1.3092808869495982,
+     "direction_acc_pct": 45.96774193548387
+    },
+    "days": 248,
+    "scale": 0.017537587848434826
+   },
+   "EICHERMOT.NS": {
+    "naive_baseline": {
+     "rmse": 122.83681735419087,
+     "mae": 88.9176517609627,
+     "mape_pct": 1.232243192237964,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 122.82714479756886,
+     "mae": 88.91888739377292,
+     "mape_pct": 1.2325044051558516,
+     "direction_acc_pct": 49.193548387096776
+    },
+    "lstm": {
+     "rmse": 122.92505389246232,
+     "mae": 89.02900361852511,
+     "mape_pct": 1.2341307341716514,
+     "direction_acc_pct": 49.193548387096776
+    },
+    "days": 248,
+    "scale": 0.016601946029959107
+   },
+   "HEROMOTOCO.NS": {
+    "naive_baseline": {
+     "rmse": 89.53635571028923,
+     "mae": 69.28628638482863,
+     "mape_pct": 1.3077335795976441,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 89.76025805326921,
+     "mae": 69.40427480000626,
+     "mape_pct": 1.3101813389199282,
+     "direction_acc_pct": 49.596774193548384
+    },
+    "lstm": {
+     "rmse": 89.66961486498654,
+     "mae": 69.38088171921484,
+     "mape_pct": 1.3097694093926133,
+     "direction_acc_pct": 49.596774193548384
+    },
+    "days": 248,
+    "scale": 0.016024451530973507
+   },
+   "NESTLEIND.NS": {
+    "naive_baseline": {
+     "rmse": 18.744760696187182,
+     "mae": 13.045424922820061,
+     "mape_pct": 0.9742364426818922,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 18.760534916690116,
+     "mae": 13.08935585179376,
+     "mape_pct": 0.9774732825211175,
+     "direction_acc_pct": 45.564516129032256
+    },
+    "lstm": {
+     "rmse": 18.805112570568618,
+     "mae": 13.138099742918602,
+     "mape_pct": 0.98124719092568,
+     "direction_acc_pct": 46.37096774193548
+    },
+    "days": 248,
+    "scale": 0.011705284475585177
+   },
+   "BRITANNIA.NS": {
+    "naive_baseline": {
+     "rmse": 68.5152133340669,
+     "mae": 52.927147649949596,
+     "mape_pct": 0.966666765721191,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 68.6783680034571,
+     "mae": 53.076914728944296,
+     "mape_pct": 0.9696318616861945,
+     "direction_acc_pct": 46.37096774193548
+    },
+    "lstm": {
+     "rmse": 68.80361981018714,
+     "mae": 53.12480852332902,
+     "mape_pct": 0.9706742791135975,
+     "direction_acc_pct": 46.37096774193548
+    },
+    "days": 248,
+    "scale": 0.012716061591274752
+   },
+   "TECHM.NS": {
+    "naive_baseline": {
+     "rmse": 27.89863645353107,
+     "mae": 19.881373251638106,
+     "mape_pct": 1.3477827163002976,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 27.862406954156512,
+     "mae": 19.83541314098669,
+     "mape_pct": 1.3454751014506436,
+     "direction_acc_pct": 52.82258064516129
+    },
+    "lstm": {
+     "rmse": 27.85527856836688,
+     "mae": 19.865288064979882,
+     "mape_pct": 1.3473976662768228,
+     "direction_acc_pct": 51.61290322580645
+    },
+    "days": 248,
+    "scale": 0.01737404052802618
+   },
+   "GRASIM.NS": {
+    "naive_baseline": {
+     "rmse": 43.043027416410034,
+     "mae": 30.407334850680442,
+     "mape_pct": 1.041143328735134,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 43.06286892534036,
+     "mae": 30.43183063443201,
+     "mape_pct": 1.0420348227914482,
+     "direction_acc_pct": 48.79032258064516
+    },
+    "lstm": {
+     "rmse": 43.07618834224264,
+     "mae": 30.435040300011362,
+     "mape_pct": 1.0422520807518176,
+     "direction_acc_pct": 49.596774193548384
+    },
+    "days": 248,
+    "scale": 0.015330356063988408
+   },
+   "CIPLA.NS": {
+    "naive_baseline": {
+     "rmse": 17.62834129712985,
+     "mae": 12.316448580834173,
+     "mape_pct": 0.8922598969937412,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 17.683718073947755,
+     "mae": 12.367760617102153,
+     "mape_pct": 0.8960996516401019,
+     "direction_acc_pct": 45.564516129032256
+    },
+    "lstm": {
+     "rmse": 17.709720334881478,
+     "mae": 12.41333023072492,
+     "mape_pct": 0.8993406142429751,
+     "direction_acc_pct": 45.16129032258064
+    },
+    "days": 248,
+    "scale": 0.014588848853653878
+   },
+   "DRREDDY.NS": {
+    "naive_baseline": {
+     "rmse": 18.506549479646438,
+     "mae": 12.885560558688256,
+     "mape_pct": 1.0357817758526504,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 18.528843970145147,
+     "mae": 12.916109940807225,
+     "mape_pct": 1.0383702874240002,
+     "direction_acc_pct": 49.596774193548384
+    },
+    "lstm": {
+     "rmse": 18.530014433283792,
+     "mae": 12.937498597802797,
+     "mape_pct": 1.0402408801167466,
+     "direction_acc_pct": 47.17741935483871
+    },
+    "days": 248,
+    "scale": 0.013143995140020528
+   },
+   "APOLLOHOSP.NS": {
+    "naive_baseline": {
+     "rmse": 102.47329039301712,
+     "mae": 74.71754307900706,
+     "mape_pct": 0.943755424324122,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 102.96979079238828,
+     "mae": 75.2665433675415,
+     "mape_pct": 0.9508933221374829,
+     "direction_acc_pct": 45.564516129032256
+    },
+    "lstm": {
+     "rmse": 102.67332572186375,
+     "mae": 75.24392741957222,
+     "mape_pct": 0.9507149459051881,
+     "direction_acc_pct": 46.774193548387096
+    },
+    "days": 248,
+    "scale": 0.01741163635638917
+   },
+   "DIVISLAB.NS": {
+    "naive_baseline": {
+     "rmse": 110.23683920514112,
+     "mae": 78.87630142704133,
+     "mape_pct": 1.0951239433967546,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 109.935475214263,
+     "mae": 78.87136611361912,
+     "mape_pct": 1.0961235166937138,
+     "direction_acc_pct": 52.41935483870967
+    },
+    "lstm": {
+     "rmse": 109.83029591050436,
+     "mae": 78.87705983399142,
+     "mape_pct": 1.0960805175568054,
+     "direction_acc_pct": 50.806451612903224
+    },
+    "days": 248,
+    "scale": 0.017652804482436474
+   },
+   "INDUSINDBK.NS": {
+    "naive_baseline": {
+     "rmse": 16.597594674311942,
+     "mae": 12.386811041062877,
+     "mape_pct": 1.3809729574936955,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 16.609659561856333,
+     "mae": 12.387416764261003,
+     "mape_pct": 1.381590914952181,
+     "direction_acc_pct": 50.403225806451616
+    },
+    "lstm": {
+     "rmse": 16.59947647970897,
+     "mae": 12.381492644840353,
+     "mape_pct": 1.380717413831097,
+     "direction_acc_pct": 50.806451612903224
+    },
+    "days": 248,
+    "scale": 0.019371298201629684
+   },
+   "SBILIFE.NS": {
+    "naive_baseline": {
+     "rmse": 25.095431778118652,
+     "mae": 18.59360134986139,
+     "mape_pct": 0.9949646369849283,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 25.11373297240742,
+     "mae": 18.629721520182432,
+     "mape_pct": 0.9973232925144997,
+     "direction_acc_pct": 48.38709677419355
+    },
+    "lstm": {
+     "rmse": 25.158075251675648,
+     "mae": 18.650417421612122,
+     "mape_pct": 0.9984885909596574,
+     "direction_acc_pct": 47.983870967741936
+    },
+    "days": 248,
+    "scale": 0.0149220258971136
+   },
+   "HDFCLIFE.NS": {
+    "naive_baseline": {
+     "rmse": 9.54777587383789,
+     "mae": 7.364844291440902,
+     "mape_pct": 1.183887470846338,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 9.56933522606095,
+     "mae": 7.390258705558341,
+     "mape_pct": 1.1880466855023313,
+     "direction_acc_pct": 45.96774193548387
+    },
+    "lstm": {
+     "rmse": 9.600721635650016,
+     "mae": 7.41127300181122,
+     "mape_pct": 1.1916926174392597,
+     "direction_acc_pct": 45.564516129032256
+    },
+    "days": 248,
+    "scale": 0.016605718297894024
+   },
+   "TATACONSUM.NS": {
+    "naive_baseline": {
+     "rmse": 16.078114854876674,
+     "mae": 12.257333570911038,
+     "mape_pct": 1.1053762608796707,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 16.148057274368984,
+     "mae": 12.340497250520828,
+     "mape_pct": 1.1130489407733302,
+     "direction_acc_pct": 47.17741935483871
+    },
+    "lstm": {
+     "rmse": 16.109346181234816,
+     "mae": 12.301394703625403,
+     "mape_pct": 1.1096997307240932,
+     "direction_acc_pct": 47.17741935483871
+    },
+    "days": 248,
+    "scale": 0.014904330074661173
+   },
+   "SHRIRAMFIN.NS": {
+    "naive_baseline": {
+     "rmse": 22.357191933612462,
+     "mae": 16.2075192851405,
+     "mape_pct": 1.6708632497381244,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 22.403081980013184,
+     "mae": 16.248086372276447,
+     "mape_pct": 1.674787440681362,
+     "direction_acc_pct": 52.016129032258064
+    },
+    "lstm": {
+     "rmse": 22.36397020987326,
+     "mae": 16.23782211729077,
+     "mape_pct": 1.6740621732113559,
+     "direction_acc_pct": 50.806451612903224
+    },
+    "days": 248,
+    "scale": 0.021821373820511688
+   },
+   "BEL.NS": {
+    "naive_baseline": {
+     "rmse": 6.61490832143399,
+     "mae": 4.839986124346333,
+     "mape_pct": 1.1647838284909813,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 6.610067050615124,
+     "mae": 4.844989137778576,
+     "mape_pct": 1.1665556361260512,
+     "direction_acc_pct": 50.403225806451616
+    },
+    "lstm": {
+     "rmse": 6.63511058948114,
+     "mae": 4.860859141920252,
+     "mape_pct": 1.1703393655084398,
+     "direction_acc_pct": 48.38709677419355
+    },
+    "days": 248,
+    "scale": 0.021188124734302018
+   },
+   "TRENT.NS": {
+    "naive_baseline": {
+     "rmse": 111.23308089142769,
+     "mae": 48.386454920614916,
+     "mape_pct": 1.640609908177869,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 111.65753128875093,
+     "mae": 49.12872165999673,
+     "mape_pct": 1.6672685758463461,
+     "direction_acc_pct": 42.74193548387097
+    },
+    "lstm": {
+     "rmse": 111.31185586302554,
+     "mae": 48.58063668667714,
+     "mape_pct": 1.6470905207114954,
+     "direction_acc_pct": 43.95161290322581
+    },
+    "days": 248,
+    "scale": 0.020523135090082543
+   }
+  },
+  "held_out_stocks": {
+   "PIDILITIND.NS": {
+    "naive_baseline": {
+     "rmse": 20.88475072971083,
+     "mae": 15.492428687310987,
+     "mape_pct": 1.0516452614760188,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 20.969573255454794,
+     "mae": 15.54132941802845,
+     "mape_pct": 1.0549235216455641,
+     "direction_acc_pct": 46.774193548387096
+    },
+    "lstm": {
+     "rmse": 20.890594174794707,
+     "mae": 15.485156481466788,
+     "mape_pct": 1.0512859356634148,
+     "direction_acc_pct": 50.403225806451616
+    },
+    "days": 248,
+    "scale": 0.01201736186625352
+   },
+   "HAVELLS.NS": {
+    "naive_baseline": {
+     "rmse": 20.242777535059318,
+     "mae": 15.002323765908518,
+     "mape_pct": 1.1971357850301756,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 20.312166887942787,
+     "mae": 15.01596628494666,
+     "mape_pct": 1.198347947446609,
+     "direction_acc_pct": 48.79032258064516
+    },
+    "lstm": {
+     "rmse": 20.33759651346522,
+     "mae": 15.054787540738975,
+     "mape_pct": 1.2015138382223542,
+     "direction_acc_pct": 48.38709677419355
+    },
+    "days": 248,
+    "scale": 0.015026454021406663
+   },
+   "DABUR.NS": {
+    "naive_baseline": {
+     "rmse": 6.598892086707599,
+     "mae": 4.891421287290512,
+     "mape_pct": 1.09978265461884,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 6.625706962989092,
+     "mae": 4.906134159236649,
+     "mape_pct": 1.1037785521276007,
+     "direction_acc_pct": 47.17741935483871
+    },
+    "lstm": {
+     "rmse": 6.618701467953986,
+     "mae": 4.915785976966126,
+     "mape_pct": 1.1056289921268696,
+     "direction_acc_pct": 44.354838709677416
+    },
+    "days": 248,
+    "scale": 0.012986831272725348
+   },
+   "GODREJCP.NS": {
+    "naive_baseline": {
+     "rmse": 17.64274251643316,
+     "mae": 12.270234630953881,
+     "mape_pct": 1.172187660983611,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 17.722587536392847,
+     "mae": 12.326656822250513,
+     "mape_pct": 1.178467911546467,
+     "direction_acc_pct": 47.983870967741936
+    },
+    "lstm": {
+     "rmse": 17.683592253695362,
+     "mae": 12.296014258383401,
+     "mape_pct": 1.175514594366203,
+     "direction_acc_pct": 48.38709677419355
+    },
+    "days": 248,
+    "scale": 0.014904468542977778
+   },
+   "SIEMENS.NS": {
+    "naive_baseline": {
+     "rmse": 69.32355447718916,
+     "mae": 50.858702871963565,
+     "mape_pct": 1.4805351092365513,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 69.26414991793884,
+     "mae": 50.834059517748386,
+     "mape_pct": 1.4799876803256455,
+     "direction_acc_pct": 52.63157894736842
+    },
+    "lstm": {
+     "rmse": 69.3858818558122,
+     "mae": 50.84102623073359,
+     "mape_pct": 1.479952524391796,
+     "direction_acc_pct": 51.821862348178136
+    },
+    "days": 247,
+    "scale": 0.019029976978746605
+   },
+   "MARICO.NS": {
+    "naive_baseline": {
+     "rmse": 9.154027072330045,
+     "mae": 7.238264514553931,
+     "mape_pct": 0.9194871369210267,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 9.144436595591147,
+     "mae": 7.23306695061381,
+     "mape_pct": 0.9192134584555334,
+     "direction_acc_pct": 50.806451612903224
+    },
+    "lstm": {
+     "rmse": 9.156720502726158,
+     "mae": 7.259864577575931,
+     "mape_pct": 0.9224960972735948,
+     "direction_acc_pct": 47.983870967741936
+    },
+    "days": 248,
+    "scale": 0.014014274872586151
+   },
+   "BERGEPAINT.NS": {
+    "naive_baseline": {
+     "rmse": 8.720467752668164,
+     "mae": 6.504060929821383,
+     "mape_pct": 1.3172000504883172,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 8.733082055516387,
+     "mae": 6.5223183013421355,
+     "mape_pct": 1.320774648048804,
+     "direction_acc_pct": 47.983870967741936
+    },
+    "lstm": {
+     "rmse": 8.72760036067069,
+     "mae": 6.540717575256891,
+     "mape_pct": 1.3249788612315623,
+     "direction_acc_pct": 44.75806451612903
+    },
+    "days": 248,
+    "scale": 0.015234013340979888
+   },
+   "LUPIN.NS": {
+    "naive_baseline": {
+     "rmse": 27.562721503712446,
+     "mae": 20.329508135395667,
+     "mape_pct": 0.9208000287257101,
+     "direction_acc_pct": null
+    },
+    "rnn": {
+     "rmse": 27.625589299117323,
+     "mae": 20.430973243503626,
+     "mape_pct": 0.925845448429457,
+     "direction_acc_pct": 47.58064516129033
+    },
+    "lstm": {
+     "rmse": 27.602732341498427,
+     "mae": 20.436139250867758,
+     "mape_pct": 0.9260067091133741,
+     "direction_acc_pct": 47.17741935483871
+    },
+    "days": 248,
+    "scale": 0.01654862148903532
+   }
+  }
+ },
+ "history": {
+  "rnn": [
+   {
+    "epoch": 1,
+    "train_loss": 1.3773844177897208,
+    "val_loss": 0.9450035450535436
+   },
+   {
+    "epoch": 2,
+    "train_loss": 1.3742095331231696,
+    "val_loss": 0.9444760344105382
+   },
+   {
+    "epoch": 3,
+    "train_loss": 1.3738909165282578,
+    "val_loss": 0.9453850447747015
+   },
+   {
+    "epoch": 4,
+    "train_loss": 1.3715546683774773,
+    "val_loss": 0.944412874098747
+   },
+   {
+    "epoch": 5,
+    "train_loss": 1.370681926234445,
+    "val_loss": 0.9508406957503288
+   },
+   {
+    "epoch": 6,
+    "train_loss": 1.371338821351334,
+    "val_loss": 0.9404699790093206
+   },
+   {
+    "epoch": 7,
+    "train_loss": 1.369398761616683,
+    "val_loss": 0.9436209578667918
+   },
+   {
+    "epoch": 8,
+    "train_loss": 1.3700051362104033,
+    "val_loss": 0.9409405736000307
+   },
+   {
+    "epoch": 9,
+    "train_loss": 1.3697567153327834,
+    "val_loss": 0.9429067640919839
+   },
+   {
+    "epoch": 10,
+    "train_loss": 1.3681219338765542,
+    "val_loss": 0.9464971691562284
+   }
+  ],
+  "lstm": [
+   {
+    "epoch": 1,
+    "train_loss": 1.3765590675322141,
+    "val_loss": 0.9432492876052856
+   },
+   {
+    "epoch": 2,
+    "train_loss": 1.375653127041402,
+    "val_loss": 0.9411578264544087
+   },
+   {
+    "epoch": 3,
+    "train_loss": 1.3754914142588819,
+    "val_loss": 0.9411771586633497
+   },
+   {
+    "epoch": 4,
+    "train_loss": 1.375330071655697,
+    "val_loss": 0.9411228641386955
+   },
+   {
+    "epoch": 5,
+    "train_loss": 1.3748846019340315,
+    "val_loss": 0.9419316068772347
+   },
+   {
+    "epoch": 6,
+    "train_loss": 1.3742498285189029,
+    "val_loss": 0.9412140158684023
+   },
+   {
+    "epoch": 7,
+    "train_loss": 1.3741195360080736,
+    "val_loss": 0.9404444809882871
+   },
+   {
+    "epoch": 8,
+    "train_loss": 1.3742433737609347,
+    "val_loss": 0.941245017820789
+   },
+   {
+    "epoch": 9,
+    "train_loss": 1.3721669260905063,
+    "val_loss": 0.9412905219293409
+   },
+   {
+    "epoch": 10,
+    "train_loss": 1.371692754034603,
+    "val_loss": 0.943177540071549
+   },
+   {
+    "epoch": 11,
+    "train_loss": 1.370145523883023,
+    "val_loss": 0.9413220702448198
+   }
+  ]
+ },
+ "trained_at": "2026-10-25T14:09:15+00:00",
+ "train_seconds": 505.2
+}

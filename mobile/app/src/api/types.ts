@@ -41,7 +41,7 @@ export interface StockForecast extends StockExtras {
   metrics: { naive_baseline: ForecastMetric; rnn: ForecastMetric; lstm: ForecastMetric };
   test: { dates: string[]; actual: number[]; rnn: number[]; lstm: number[] };
 }
-export interface StockTickers { trained: string[] }
+export interface StockTickers { trained: string[]; universal?: boolean; universal_info?: UniversalInfo | null }
 
 // 4. Finance
 export type Stance = 'bullish' | 'neutral' | 'bearish';
@@ -83,36 +83,62 @@ export interface ObjectResult {
   image_base64: string;
 }
 
-// India extras (additive; every field optional so the app copes with older servers)
+// India (API.md sections 8 and 9, v1.1). Every field is optional so the app copes with older servers.
 export interface IndiaInstrument { symbol: string; name?: string | null; sector?: string | null }
 export interface IndiaPopular { stocks: IndiaInstrument[]; indices: IndiaInstrument[] }
+/** GET /api/india/market-status. Times are IST ISO-8601 ("2026-10-26T09:15:00+05:30"). */
 export interface MarketStatus {
-  exchange?: string; is_open?: boolean; status?: string; label?: string; message?: string;
-  now_ist?: string | null; next_open_ist?: string | null; next_close_ist?: string | null;
-  next_open?: string | null; next_close?: string | null; [k: string]: unknown;
-}
-export interface BenchmarkReturn { stock?: number | null; index?: number | null; benchmark?: number | null }
-export interface Benchmark {
-  name?: string; symbol?: string; beta?: number | null;
-  returns?: Record<string, BenchmarkReturn | null> | null;
+  exchange?: string; is_open?: boolean; now_ist?: string | null;
+  next_open_ist?: string | null; next_close_ist?: string | null; note?: string | null;
+  // tolerated from older/guessed shapes
+  status?: string; label?: string; message?: string; next_open?: string | null; next_close?: string | null;
   [k: string]: unknown;
 }
+/** finance report `benchmark`: returns are fractions (0.034 = +3.4%). Any number may be null. */
+export interface Benchmark {
+  symbol?: string | null; name?: string | null;
+  stock_return_1m?: number | null; index_return_1m?: number | null;
+  stock_return_3m?: number | null; index_return_3m?: number | null;
+  stock_return_1y?: number | null; index_return_1y?: number | null;
+  beta?: number | null; relative_strength_1y?: number | null;
+  /** older guessed shape: { "1m": { stock, index } } */
+  returns?: Record<string, { stock?: number | null; index?: number | null; benchmark?: number | null } | null> | null;
+  [k: string]: unknown;
+}
+export interface Display { last_close?: string | null; price?: string | null; change?: string | null; [k: string]: unknown }
 export interface FinanceExtras {
-  as_of_ist?: string | null;
+  normalized_ticker?: string | null; as_of_ist?: string | null;
   sector?: string | null; industry?: string | null; market_cap_display?: string | null;
-  display?: { last_close?: string | null; [k: string]: unknown } | null;
+  display?: Display | null;
   benchmark?: Benchmark | null;
 }
-export interface StockExtras { as_of_ist?: string | null; currency?: string | null; name?: string | null; display?: { last_close?: string | null; [k: string]: unknown } | null }
-export interface IndiaSearchResult { symbol: string; nse_symbol?: string | null; name?: string | null; isin?: string | null; series?: string | null }
+export type StockModelKind = 'universal' | 'per_ticker';
+export interface UniversalInfo { kind?: string; trained_on?: number | null; trained_until?: string | null; data_until?: string | null; held_out_stocks?: string[] | null; note?: string | null; [k: string]: unknown }
+export interface StockExtras {
+  normalized_ticker?: string | null; name?: string | null; currency?: string | null;
+  display?: Display | null; as_of_ist?: string | null; market_open?: boolean | null;
+  model?: StockModelKind | null; model_info?: UniversalInfo | null;
+  /** POST /train on the slim (Render) server: false = universal forecast returned, nothing trained */
+  trained?: boolean | null;
+}
+export interface IndiaListing { symbol: string; nse_symbol?: string | null; name?: string | null; isin?: string | null; series?: string | null }
+export type IndiaSearchResult = IndiaListing;
 export interface IndiaSearch { query: string; results: IndiaSearchResult[] }
+export interface IndiaStocksPage { total: number; offset: number; limit: number; snapshot_date?: string | null; stocks: IndiaListing[] }
 
-// Live data (tolerant: field names normalised in api/live.ts)
+// Live data (GET /api/india/quote|quotes|intraday; normalised in api/live.ts)
 export interface Quote {
   symbol: string; name?: string | null; currency?: string | null;
   price: number | null; change: number | null; change_pct: number | null; prev_close?: number | null;
-  as_of_ist?: string | null; delayed?: boolean | null;
-  display?: { price?: string | null; change?: string | null; [k: string]: unknown } | null;
+  open?: number | null; high?: number | null; low?: number | null; volume?: number | null;
+  as_of_ist?: string | null; market_open?: boolean | null; delayed?: boolean | null;
+  source?: string | null; delayed_note?: string | null;
+  /** display.change already includes the percentage, e.g. "+₹5.50 (+0.38%)" */
+  display?: Display | null;
 }
+export interface QuotesResult { quotes: Quote[]; errors: { symbol: string; detail: string }[] }
 export interface IntradayPoint { t: string; price: number }
-export interface Intraday { symbol: string; interval: string; points: IntradayPoint[]; as_of_ist?: string | null; prev_close?: number | null; currency?: string | null }
+export interface Intraday {
+  symbol: string; interval: string; points: IntradayPoint[]; session_date?: string | null; market_open?: boolean | null;
+  source?: string | null; as_of_ist?: string | null; prev_close?: number | null; currency?: string | null;
+}

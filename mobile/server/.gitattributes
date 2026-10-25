@@ -1,6 +1,8 @@
-# Hugging Face rejects plain-git files over 10 MB; store binaries with LFS/Xet.
-*.pt filter=lfs diff=lfs merge=lfs -text
-*.onnx filter=lfs diff=lfs merge=lfs -text
-*.joblib filter=lfs diff=lfs merge=lfs -text
-*.png filter=lfs diff=lfs merge=lfs -text
-*.jpg filter=lfs diff=lfs merge=lfs -text
+# Binary files. Deliberately NOT routed through Git LFS: Render (and plain GitHub clones)
+# must get the real model files. Every file here is < 50 MB, so plain git is fine on GitHub.
+# For a Hugging Face Space push (10 MB limit) see README "Deploy to Hugging Face Spaces".
+*.pt binary
+*.onnx binary
+*.joblib binary
+*.png binary
+*.jpg binary

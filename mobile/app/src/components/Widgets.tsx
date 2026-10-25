@@ -51,3 +51,28 @@ export function money(x: number | null | undefined, currency?: string | null, di
   if (c === 'USD') return '$' + s;
   return c ? `${s} ${c}` : s;
 }
+
+/** Today's date in India as "YYYY-MM-DD". */
+export function istToday(): string {
+  const ist = new Date(Date.now() + 330 * 60000);
+  return ist.toISOString().slice(0, 10);
+}
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/**
+ * IST ISO-8601 from the server ("2026-10-23T15:29:00+05:30") -> "23 Oct, 15:29 IST", or "15:29 IST" when it is today (IST).
+ * `withDay` gives "Mon 09:15 IST" (for next open/close). Anything that isn't ISO is returned unchanged.
+ */
+export function fmtIst(v: string | null | undefined, withDay = false): string | null {
+  if (!v) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(v);
+  if (!m) return v;
+  const [, y, mo, d, hh, mm] = m;
+  const hm = `${hh}:${mm} IST`;
+  const today = istToday() === `${y}-${mo}-${d}`;
+  if (withDay) {
+    const dow = DOW[new Date(Date.UTC(+y, +mo - 1, +d)).getUTCDay()];
+    return today ? `today ${hm}` : `${dow} ${hm}`;
+  }
+  return today ? hm : `${+d} ${MON[+mo - 1]}, ${hm}`;
+}

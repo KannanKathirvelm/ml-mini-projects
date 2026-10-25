@@ -16,6 +16,45 @@ which mode was used.
 > **Not financial advice.** This is an educational project. It uses public Yahoo Finance data,
 > which may be delayed or incomplete.
 
+## India first
+
+The project defaults to Indian markets (NSE), while still accepting US and other symbols.
+All of this lives in `india.py` and needs no network unless it fetches prices.
+
+- **Type a symbol or a company name.** `normalize_ticker` turns user input into a Yahoo symbol:
+  `reliance` → `RELIANCE.NS`, `infosys` / `Infosys Ltd` → `INFY.NS`, `state bank` → `SBIN.NS`,
+  `relaince industries` (typo, fuzzy match) → `RELIANCE.NS`, `bajaj-auto` → `BAJAJ-AUTO.NS`,
+  `nifty` → `^NSEI`, `sensex` → `^BSESN`, `banknifty` → `^NSEBANK`, `tatamotors` → `TMPV.NS`
+  (Tata Motors' passenger business after the 2025 demerger). Explicit suffixes are kept, so
+  `INFY.BO` stays on BSE, and known US symbols (`AAPL`, `MSFT`, `BRK-B`) pass through unchanged.
+- **NSE stock list.** `data/nse_equities.csv` is NSE's official equity list (2,613 symbols, snapshot
+  2026-10-24, with ISIN and series). `search_nse("infos")` searches it by symbol prefix and by
+  company-name words. `python india.py --refresh` re-downloads it from NSE (NSE sometimes blocks
+  scripted downloads; the bundled snapshot is kept if it does).
+- **Spot check (2026-10-25):** 10 random symbols from the list (`random.seed(7)`) all returned
+  prices from Yahoo (`india.has_data`): 10/10.
+- **₹ formatting with Indian digit grouping:** `format_inr(1234567.8)` → `₹12,34,567.80`,
+  `format_inr_compact(1.72e13)` → `₹17.2 lakh crore`; `format_money` picks ₹ or $ from the currency.
+- **Market hours:** `market_status()` says whether NSE is open (09:15–15:30 IST, Mon–Fri) with the
+  next open/close in IST. Exchange holidays are not modelled.
+- **Freshness:** `cache_is_stale` re-downloads daily prices every 5 minutes while the market is
+  open, and after the close only when a newer session exists; `data_as_of` gives the "as of" time
+  shown in every report.
+- **Live quote and intraday chart:** `live_quote` and `intraday` (1-minute bars) from Yahoo,
+  cached ~15–30 s while the market is open. The dashboard's quote header refreshes itself every
+  45 s with `st.fragment(run_every=...)`, only during market hours.
+- **Benchmark:** every report compares the stock with NIFTY 50 (Indian symbols) or the S&P 500
+  (others) over 1 month, 3 months and 1 year, with beta (`indicators.benchmark_stats`).
+  Indian reports also compare the P/E with the Nifty 50 P/E (live from Yahoo when available,
+  otherwise a stated long-run reference of 21x, labelled as such).
+- **Data gaps, stated honestly:** promoter holding and pledges, FII/DII flows and NSE corporate
+  announcements are not in Yahoo's free data, so they are not assessed; Indian news coverage on
+  Yahoo is sparse and the report says so when fewer than 3 headlines are found.
+
+**Live data caveat:** Yahoo Finance's free feed is not an official exchange feed and NSE quotes may
+be delayed by a few minutes. Real-time NSE data needs a licensed broker API (Zerodha Kite Connect,
+Upstox, Angel SmartAPI) with your own account.
+
 ## Agent architecture
 
 ```
@@ -125,8 +164,8 @@ indicator, download button):
 .venv/bin/streamlit run app.py
 ```
 
-Tests (headless dashboard smoke test, plus checks of the LLM request with a mocked transport
-so no API call is made):
+Tests (offline India helpers, a headless dashboard smoke test with real Yahoo data, and checks
+of the LLM request with a mocked transport, so no Claude API call is made):
 
 ```bash
 .venv/bin/python -m pytest -q tests
@@ -183,6 +222,8 @@ Error: No price data found for 'ZZZZNOTREAL'. Check the Yahoo Finance symbol (e.
 
 ```
 04_financial_ai_agents/
+├── india.py           # India-first: ticker rule, NSE list + search, ₹, market hours, live quotes
+├── data/nse_equities.csv  # NSE's official equity list (snapshot)
 ├── data_tools.py      # yfinance wrappers: history, key stats, news (with fallbacks)
 ├── indicators.py      # SMA, RSI, MACD, volatility, drawdown in plain pandas
 ├── llm.py             # mode detection, model config, Claude JSON call
@@ -191,6 +232,7 @@ Error: No price data found for 'ZZZZNOTREAL'. Check the Yahoo Finance symbol (e.
 ├── report.py          # CLI
 ├── app.py             # Streamlit dashboard
 ├── tests/
+│   ├── test_india.py      # normalisation, NSE search, ₹ formatting, market hours, benchmark (offline)
 │   ├── test_app.py        # streamlit AppTest smoke tests (real data, offline)
 │   └── test_llm_path.py   # LLM request shape + fallbacks via mocked transport
 ├── reports/           # saved Markdown reports (git-ignored)

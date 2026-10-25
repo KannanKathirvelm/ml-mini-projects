@@ -3,8 +3,11 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 
 export interface AppSettings { serverUrl: string; mock: boolean }
 
+/** Free Render web service (sleeps after 15 min idle). CI builds set VITE_API_URL from the API_URL repo variable. */
+export const HOSTED_API_URL = 'https://ml-mini-projects.onrender.com';
+
 export const DEFAULT_SETTINGS: AppSettings = {
-  serverUrl: (import.meta.env.VITE_API_URL || 'http://10.0.2.2:7860').replace(/\/+$/, ''),
+  serverUrl: (import.meta.env.VITE_API_URL || HOSTED_API_URL).replace(/\/+$/, ''),
   mock: String(import.meta.env.VITE_MOCK || 'false') === 'true',
 };
 

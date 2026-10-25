@@ -70,3 +70,6 @@ ul.tight li { margin: 3px 0; }
 .wl-right { text-align: right; font-size: 0.85rem; }
 .wl-price { font-weight: 600; font-variant-numeric: tabular-nums; }
 .tight-content { padding-left: 0; padding-right: 0; }
+ion-segment-button { text-transform: none; }
+.waking-banner { background: var(--ion-color-warning-tint, #ffe08a); color: #3d2f00; }
+.waking-text { padding: 4px 12px; font-size: 0.8rem; text-align: center; }

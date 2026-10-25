@@ -2,7 +2,7 @@
 
 One FastAPI server exposes all 7 projects. The seven Android apps call it over HTTPS.
 
-- Base URL: `https://<user>-ml-mini-projects.hf.space` in production (Hugging Face Spaces, port 7860), `http://10.0.2.2:7860` from the Android emulator, `http://localhost:7860` locally.
+- Base URL: `https://ml-mini-projects.onrender.com` in production (Render free web service, slim profile; the exact host is whatever Render assigns), `https://<user>-ml-mini-projects.hf.space` on Hugging Face Spaces (port 7860), `http://10.0.2.2:7860` from the Android emulator, `http://localhost:7860` locally.
 - All responses are JSON. Errors use HTTP 4xx/5xx with body `{"detail": "<human readable message>"}`.
 - CORS allows all origins (Capacitor apps load from `https://localhost` / `capacitor://localhost`).
 - Images in responses are base64 JPEG strings without the `data:` prefix.
@@ -10,7 +10,9 @@ One FastAPI server exposes all 7 projects. The seven Android apps call it over H
 
 ## Common
 
-`GET /health` → `{"status": "ok", "version": "1", "projects": ["credit-card", "upi", "stocks", "finance", "prices", "faces", "objects"]}`
+`GET /health` → `{"status": "ok", "version": "1", "projects": ["credit-card", "upi", "stocks", "finance", "prices", "faces", "objects", "india"], "profile": "full"}`
+
+`profile` is `"full"` (local torch server) or `"slim"` (Render: ONNX models, no training at runtime). The free Render service sleeps after ~15 min idle; the first request after that can take 30–60 s, so use a long timeout and show a "waking up" state.
 
 ---
 
@@ -143,3 +145,132 @@ Note: on Hugging Face free hardware the SQLite file is wiped on restart. The ser
  "detections": [{"cls": "bus", "conf": 0.94, "box": [x1, y1, x2, y2]}],
  "image_base64": "<annotated jpeg>"}
 ```
+
+---
+
+## 8. India market data: `/api/india` (added in v1.1, additive)
+
+India-first helpers shared by the stock and finance screens. Every ticker path/query parameter
+in this section **and** in `/api/stocks` and `/api/finance` accepts free text and is normalised
+India-first (same rule as `04_financial_ai_agents/india.py::normalize_ticker`):
+`reliance` → `RELIANCE.NS`, `infosys` → `INFY.NS`, `state bank` → `SBIN.NS`, `nifty` → `^NSEI`,
+`sensex` → `^BSESN`, `banknifty` → `^NSEBANK`, `tatamotors` → `TMPV.NS`, `INFY.BO` stays BSE,
+`AAPL`/`MSFT` and anything with an explicit suffix or `^` stay as typed. Responses that take a
+ticker echo the resolved symbol as `normalized_ticker` (or `symbol`).
+
+Prices come from Yahoo Finance's free feed: NSE quotes may be **delayed by a few minutes** and are
+not an official exchange feed. Times are IST ISO-8601 strings, e.g. `"2026-10-23T15:29:00+05:30"`.
+Money is in the instrument's `currency` (`"INR"` for NSE/BSE); `display` holds ready-to-show
+strings (`"₹1,452.30"`, `"+₹5.50 (+0.38%)"`, Indian digit grouping).
+
+`GET /api/india/popular` → the 20 quick picks and the 3 headline indices:
+```json
+{"stocks": [{"symbol": "RELIANCE.NS", "name": "Reliance Industries", "sector": "Energy"}, ...],
+ "indices": [{"symbol": "^NSEI", "name": "NIFTY 50"}, {"symbol": "^BSESN", "name": "S&P BSE SENSEX"},
+             {"symbol": "^NSEBANK", "name": "NIFTY BANK"}]}
+```
+
+`GET /api/india/market-status` →
+```json
+{"exchange": "NSE", "is_open": false, "now_ist": "2026-10-25T19:10:00+05:30",
+ "next_open_ist": "2026-10-26T09:15:00+05:30", "next_close_ist": "2026-10-26T15:30:00+05:30",
+ "note": "Exchange holidays not included"}
+```
+Regular session 09:15–15:30 IST, Monday–Friday. Exchange holidays are not modelled.
+
+`GET /api/india/search?q=infos&limit=10` (`q` required, 1 ≤ `limit` ≤ 50, default 10) → searches the
+bundled official NSE equity list (~2,600 symbols) by symbol prefix, then by company-name words.
+No network needed.
+```json
+{"query": "infos", "results": [{"symbol": "INFY.NS", "nse_symbol": "INFY", "name": "Infosys Limited",
+                                "isin": "INE009A01021", "series": "EQ"}]}
+```
+`results` is `[]` when nothing matches (not 404).
+
+`GET /api/india/stocks?offset=0&limit=100` (0 ≤ `offset`, 1 ≤ `limit` ≤ 500) → the whole NSE list, paged,
+alphabetical by symbol:
+```json
+{"total": 2613, "offset": 0, "limit": 100, "snapshot_date": "2026-10-24",
+ "stocks": [{"symbol": "20MICRONS.NS", "nse_symbol": "20MICRONS", "name": "20 Microns Limited",
+             "isin": "INE144J01027", "series": "EQ"}, ...]}
+```
+
+`GET /api/india/quote/{ticker}` (e.g. `/api/india/quote/reliance`) → near-live quote:
+```json
+{"symbol": "RELIANCE.NS", "name": "Reliance Industries", "price": 1452.3, "change": 5.5,
+ "change_pct": 0.38, "prev_close": 1446.8, "open": 1448.0, "high": 1460.0, "low": 1440.1,
+ "volume": 8123456, "currency": "INR",
+ "display": {"price": "₹1,452.30", "change": "+₹5.50 (+0.38%)"},
+ "as_of_ist": "2026-10-23T15:29:00+05:30", "market_open": false,
+ "source": "Yahoo Finance (may be delayed)",
+ "delayed_note": "Free Yahoo Finance data; NSE quotes may be delayed by a few minutes and are not an official exchange feed."}
+```
+Works for indices (`nifty`) and US symbols too (then `currency` is `"USD"`, `display` uses `$`).
+Any numeric field may be `null` if Yahoo omits it. Cached about 15 s while the market is open,
+10 min when closed. 404 `{"detail": "..."}` if Yahoo has no price for the symbol.
+
+`GET /api/india/quotes?symbols=RELIANCE,TCS,nifty` (comma-separated, 1–20 symbols) →
+```json
+{"quotes": [ ...quote objects as above... ],
+ "errors": [{"symbol": "ZZZZ", "detail": "No price data found for 'ZZZZ'..."}]}
+```
+Symbols that fail go to `errors` instead of failing the request. More than 20 → 400.
+
+`GET /api/india/intraday/{ticker}?interval=1m` (`interval` = `1m` (default) | `5m`) → today's bars,
+or the last session's when the market has not traded today:
+```json
+{"symbol": "RELIANCE.NS", "interval": "1m", "session_date": "2026-10-23", "market_open": false,
+ "source": "Yahoo Finance (may be delayed)",
+ "bars": [{"time_ist": "2026-10-23T09:15:00+05:30", "open": 1448.0, "high": 1449.5, "low": 1447.2,
+           "close": 1449.1, "volume": 120345}, ...]}
+```
+Poll every 30–60 s while `market_open` is true; there is no point polling when it is false.
+400 for another `interval`, 404 for no data.
+
+## 9. India fields added to existing endpoints (additive)
+
+`GET /api/stocks/{ticker}/forecast` and `POST /api/stocks/{ticker}/train` gain:
+```json
+{"normalized_ticker": "RELIANCE.NS", "name": "Reliance Industries", "currency": "INR",
+ "display": {"last_close": "₹1,452.30"}, "as_of_ist": "2026-10-23T15:30:00+05:30",
+ "market_open": false, "model": "universal",
+ "model_info": {"kind": "universal", "trained_on": 50, "held_out_stocks": ["BERGEPAINT.NS", ...],
+                "trained_until": "2024-10-23", "data_until": "2026-10-23",
+                "trained_at": "2026-10-25T14:09:00+00:00",
+                "note": "One RNN and one LSTM trained on ~50 liquid NSE stocks pooled together..."}}
+```
+- `ticker` keeps its old meaning (the symbol that was forecast) and now equals `normalized_ticker`.
+- Optional query `model` = `auto` (default) | `universal` | `per_ticker`.
+  `auto` uses `"per_ticker"` when a model trained on this exact symbol exists (AAPL, MSFT, GOOGL,
+  RELIANCE.NS, TCS.NS are shipped), otherwise `"universal"`: the pooled India model, which works
+  for **any** symbol with at least 106 trading days of history (inputs are scale-free), so every
+  NSE stock can be forecast without training. `model=per_ticker` without such a model → 404.
+- With `"universal"`, `metrics` and `test` are a live walk-forward back-test of the universal
+  model on this stock's last 120 trading days (same keys as before: `naive_baseline`, `rnn`,
+  `lstm`; `test.dates/actual/rnn/lstm`). With `"per_ticker"` they are that model's own held-out
+  test period, as before.
+- `GET /api/stocks/tickers` gains `"universal": true` (any ticker can be forecast) and
+  `"universal_info"` (same object as `model_info` above, or `null`).
+- `POST /api/stocks/{ticker}/train` also returns `"trained": true|false`. On the full (torch)
+  server it trains a per-ticker model (about 1 minute) and returns its forecast (`"model":
+  "per_ticker"`, `"trained": true`). On the slim hosted server (`SERVER_PROFILE=slim`, used on
+  Render) there is no training at runtime: it immediately returns the universal forecast with
+  `"model": "universal"` and `"trained": false`. Treat both as success and render the forecast.
+- 404 now only happens when Yahoo has no price data for the symbol (or under 106 days of it).
+- Every number in the forecast is in `currency`; use `display.last_close` for the headline price.
+
+`GET /api/finance/{ticker}/report` gains:
+```json
+{"normalized_ticker": "TCS.NS", "sector": "Technology", "industry": "Information Technology Services",
+ "market_cap_display": "₹11.2 lakh crore", "as_of_ist": "2026-10-23T15:30:00+05:30",
+ "display": {"last_close": "₹3,050.20"},
+ "benchmark": {"symbol": "^NSEI", "name": "NIFTY 50",
+               "stock_return_1m": -0.021, "index_return_1m": 0.012,
+               "stock_return_3m": 0.034, "index_return_3m": 0.028,
+               "stock_return_1y": -0.18, "index_return_1y": 0.07,
+               "beta": 0.62, "relative_strength_1y": -0.234}}
+```
+Returns are fractions (`0.034` = +3.4%). `benchmark` is NIFTY 50 for Indian symbols and S&P 500
+(`^GSPC`) otherwise; it is `null` if the index download fails, and any of its numbers may be
+`null` (e.g. `beta` with too little overlapping history). `sector`, `industry`,
+`market_cap_display` may be `null`.

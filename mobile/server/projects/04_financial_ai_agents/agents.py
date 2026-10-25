@@ -9,6 +9,7 @@ import json
 from dataclasses import asdict, dataclass, field
 
 import llm
+from india import format_money
 
 STANCES = ["bullish", "neutral", "bearish"]
 
@@ -61,6 +62,25 @@ class Finding:
         return asdict(self)
 
 
+INDIA_DATA_GAP = ("Promoter holding, promoter pledges and FII/DII flows are not available "
+                  "from Yahoo Finance, so they were not assessed.")
+
+
+def market_context(data: dict) -> str:
+    """Extra system-prompt context so Claude reads Indian numbers the right way."""
+    if not data.get("is_indian"):
+        b = (data.get("benchmark") or {}).get("name", "S&P 500")
+        return f" Prices are in {data.get('currency') or 'USD'}; the benchmark index is the {b}."
+    return (" This is an Indian equity listed on the NSE/BSE. Prices and amounts are in Indian "
+            "rupees (₹, INR); express large amounts in lakh and crore (1 crore = 10 million, "
+            "1 lakh crore = 1 trillion). The benchmark index is the NIFTY 50 (^NSEI). "
+            "Promoter holding and FII/DII flow data are not provided; do not guess them.")
+
+
+def _money(data: dict, x) -> str:
+    return format_money(x, data.get("currency"))
+
+
 def _pct(x, digits: int = 1) -> str:
     return "n/a" if x is None else f"{x * 100:+.{digits}f}%"
 
@@ -83,7 +103,7 @@ class Agent:
         if not use_llm:
             return self.rules(data)
         try:
-            out = llm.ask_json(f"You are the {self.name}. {self.role} {STYLE}",
+            out = llm.ask_json(f"You are the {self.name}. {self.role}{market_context(data)} {STYLE}",
                                self.prompt(data), FINDING_SCHEMA, model)
             return Finding(agent=self.name, source="llm", **out)
         except llm.LLMError as exc:
@@ -98,7 +118,10 @@ class TechnicalAnalyst(Agent):
 
     def prompt(self, data: dict) -> str:
         return (f"Ticker: {data['ticker']}\nTechnical indicators (returns/volatility as fractions):\n"
-                f"{json.dumps(data['indicators'], indent=2)}\n\nGive your technical view.")
+                f"{json.dumps(data['indicators'], indent=2)}\n"
+                f"Benchmark comparison (returns as fractions, beta from 1y daily returns):\n"
+                f"{json.dumps(data.get('benchmark'), indent=2)}\n\n"
+                "Give your technical view, including how the stock moved relative to its benchmark.")
 
     def rules(self, data: dict) -> Finding:
         ind = data["indicators"]
@@ -107,14 +130,14 @@ class TechnicalAnalyst(Agent):
 
         if s50:
             if px > s50:
-                score += 1; bull.append(f"Price {px:,.2f} is above the 50-day SMA ({s50:,.2f}).")
+                score += 1; bull.append(f"Price {_money(data, px)} is above the 50-day SMA ({_money(data, s50)}).")
             else:
-                score -= 1; bear.append(f"Price {px:,.2f} is below the 50-day SMA ({s50:,.2f}).")
+                score -= 1; bear.append(f"Price {_money(data, px)} is below the 50-day SMA ({_money(data, s50)}).")
         if s200:
             if px > s200:
-                score += 1; bull.append(f"Price is above the 200-day SMA ({s200:,.2f}): long-term uptrend.")
+                score += 1; bull.append(f"Price is above the 200-day SMA ({_money(data, s200)}): long-term uptrend.")
             else:
-                score -= 1; bear.append(f"Price is below the 200-day SMA ({s200:,.2f}): long-term downtrend.")
+                score -= 1; bear.append(f"Price is below the 200-day SMA ({_money(data, s200)}): long-term downtrend.")
         if s50 and s200:
             if s50 > s200:
                 score += 0.5; bull.append("50-day SMA is above the 200-day SMA (golden-cross alignment).")
@@ -141,6 +164,23 @@ class TechnicalAnalyst(Agent):
             (bull if r3 > 0 else bear).append(f"3-month return is {_pct(r3)}.")
             score += 0.5 if r3 > 0 else -0.5
 
+        b = data.get("benchmark")
+        if b and b.get("relative_strength_1y") is not None:
+            rs, idx = b["relative_strength_1y"], b["name"]
+            if rs > 0.05:
+                score += 0.5; bull.append(f"Outperformed the {idx} by {_pct(rs)} over 1 year "
+                                          f"(stock {_pct(b['stock_return_1y'])} vs index {_pct(b['index_return_1y'])}).")
+            elif rs < -0.05:
+                score -= 0.5; bear.append(f"Underperformed the {idx} by {_pct(rs)} over 1 year "
+                                          f"(stock {_pct(b['stock_return_1y'])} vs index {_pct(b['index_return_1y'])}).")
+        if b and b.get("stock_return_3m") is not None and b.get("index_return_3m") is not None:
+            gap = b["stock_return_3m"] - b["index_return_3m"]
+            if abs(gap) > 0.03:
+                (bull if gap > 0 else bear).append(
+                    f"3-month return {_pct(b['stock_return_3m'])} vs {b['name']} {_pct(b['index_return_3m'])}.")
+        if b and b.get("beta") is not None and b["beta"] > 1.3:
+            bear.append(f"High beta {b['beta']:.2f} vs the {b['name']}: moves are amplified.")
+
         if ind["volatility_1y"] > 0.45:
             bear.append(f"High annualised volatility ({_pct(ind['volatility_1y'], 0)[1:]}).")
         if ind["drawdown_from_52w_high"] < -0.2:
@@ -150,6 +190,9 @@ class TechnicalAnalyst(Agent):
         summary = (f"Technical picture is {stance} (score {score:+.2f}). RSI {r:.0f}, "
                    f"1-year volatility {ind['volatility_1y']:.0%}, max 1-year drawdown "
                    f"{ind['max_drawdown_1y']:.0%}, 1-year return {_pct(ind['return_1y'])}.")
+        if b and b.get("index_return_1y") is not None:
+            beta = "n/a" if b.get("beta") is None else f"{b['beta']:.2f}"
+            summary += f" {b['name']} 1-year return {_pct(b['index_return_1y'])}; beta {beta}."
         return Finding(self.name, stance, summary, bull, bear)
 
 
@@ -161,8 +204,11 @@ class FundamentalAnalyst(Agent):
         f = data["fundamentals"]
         return (f"Ticker: {data['ticker']}\nProfile: {json.dumps(f['profile'])}\n"
                 f"Key stats from Yahoo Finance (margins/growth/ROE as fractions; dividendYield and "
-                f"debtToEquity already in percent):\n{json.dumps(f['stats'], indent=2)}\n\n"
-                "Give your fundamental view. Missing fields simply were not reported.")
+                f"debtToEquity already in percent; money in {data.get('currency') or 'the listing currency'}):\n"
+                f"{json.dumps(f['stats'], indent=2)}\n"
+                + (f"Nifty 50 trailing P/E for comparison: {data['market_pe']['pe']:.1f} "
+                   f"({data['market_pe']['source']}).\n" if data.get("market_pe") else "")
+                + "\nGive your fundamental view. Missing fields simply were not reported.")
 
     def rules(self, data: dict) -> Finding:
         s = data["fundamentals"]["stats"]
@@ -178,6 +224,16 @@ class FundamentalAnalyst(Agent):
                 score -= 1; bear.append(f"Rich valuation at P/E {pe:.1f}; high expectations priced in.")
             else:
                 bull.append(f"P/E {pe:.1f} is within a typical range.")
+        mpe = data.get("market_pe")
+        if pe and pe > 0 and mpe:
+            rel = pe / mpe["pe"] - 1
+            label = "Nifty 50 P/E" + ("" if mpe["live"] else " reference")
+            if rel < -0.2:
+                score += 0.5; bull.append(f"P/E {pe:.1f} is {abs(rel):.0%} below the {label} ({mpe['pe']:.1f}).")
+            elif rel > 0.3:
+                score -= 0.5; bear.append(f"P/E {pe:.1f} is {rel:.0%} above the {label} ({mpe['pe']:.1f}).")
+            else:
+                bull.append(f"P/E {pe:.1f} is close to the {label} ({mpe['pe']:.1f}).")
         peg = s.get("pegRatio")
         if peg is not None and peg > 0:
             if peg < 1:
@@ -218,7 +274,7 @@ class FundamentalAnalyst(Agent):
         if target and price:
             upside = target / price - 1
             (bull if upside > 0 else bear).append(
-                f"Analyst mean target {target:,.2f} implies {_pct(upside)} vs current price.")
+                f"Analyst mean target {_money(data, target)} implies {_pct(upside)} vs current price.")
             score += 0.5 if upside > 0.1 else -0.5 if upside < -0.05 else 0
         rec = s.get("recommendationKey")
         if rec in ("buy", "strong_buy"):
@@ -231,6 +287,13 @@ class FundamentalAnalyst(Agent):
         stance = _stance_from_score(score, 1.5)
         summary = (f"Fundamentals look {stance} (score {score:+.2f}) based on "
                    f"{len(s)} reported metrics.")
+        cur = data.get("currency")
+        if s.get("marketCap"):
+            summary += f" Market cap {format_money(s['marketCap'], cur, compact=True)}"
+            summary += (f", revenue {format_money(s['totalRevenue'], cur, compact=True)}."
+                        if s.get("totalRevenue") else ".")
+        if data.get("is_indian"):
+            summary += " " + INDIA_DATA_GAP
         return Finding(self.name, stance, summary, bull, bear)
 
 
@@ -267,13 +330,17 @@ class NewsAnalyst(Agent):
         news = data["news"]
         if not news:
             return Finding(self.name, "neutral", "No recent headlines were available; sentiment is unknown.")
+        sparse = (f" Only {len(news)} relevant headline(s) were found (Yahoo covers NSE/BSE stocks "
+                  "thinly), so this view carries little weight."
+                  if data.get("is_indian") and len(news) < 3 else "")
         scored = [(headline_sentiment(n["title"]), n["title"]) for n in news]
         pos = [t for s, t in scored if s > 0]
         neg = [t for s, t in scored if s < 0]
         net = (len(pos) - len(neg)) / len(scored)
         stance = "bullish" if net >= 0.2 else "bearish" if net <= -0.2 else "neutral"
         summary = (f"{len(scored)} headlines: {len(pos)} positive, {len(neg)} negative, "
-                   f"{len(scored) - len(pos) - len(neg)} neutral (keyword sentiment, net {net:+.2f}).")
+                   f"{len(scored) - len(pos) - len(neg)} neutral (keyword sentiment, net {net:+.2f})."
+                   + sparse)
         return Finding(self.name, stance, summary,
                        [f'Positive headline: "{t}"' for t in pos[:4]],
                        [f'Negative headline: "{t}"' for t in neg[:4]])
@@ -291,7 +358,8 @@ class LeadAnalyst:
                 report = llm.ask_json(
                     "You are the Lead Analyst of an equity research team. Combine your specialists' "
                     "findings into a balanced market-insight report. Resolve disagreements "
-                    f"explicitly and list concrete key risks. {STYLE}",
+                    f"explicitly and list concrete key risks. Relate the stock's performance "
+                    f"to its benchmark index.{market_context(data)} {STYLE}",
                     self._prompt(data, findings), REPORT_SCHEMA, model)
                 report["source"] = "llm"
                 return report
@@ -304,7 +372,8 @@ class LeadAnalyst:
     def _prompt(self, data: dict, findings: list[Finding]) -> str:
         return (f"Ticker: {data['ticker']} ({data['fundamentals']['profile'].get('longName', '')})\n"
                 f"Specialist findings:\n{json.dumps([f.to_dict() for f in findings], indent=2)}\n\n"
-                f"Key indicators: {json.dumps(data['indicators'])}\n\nWrite the final report.")
+                f"Key indicators: {json.dumps(data['indicators'])}\n"
+                f"Benchmark comparison: {json.dumps(data.get('benchmark'))}\n\nWrite the final report.")
 
     def rules(self, data: dict, findings: list[Finding]) -> dict:
         value = {"bullish": 1, "neutral": 0, "bearish": -1}
@@ -316,9 +385,14 @@ class LeadAnalyst:
 
         name = data["fundamentals"]["profile"].get("longName", data["ticker"])
         views = ", ".join(f"{f.agent.split(' ')[0].lower()} {f.stance}" for f in findings)
-        summary = (f"{name} ({data['ticker']}) closed at {data['indicators']['last_close']:,.2f} "
+        summary = (f"{name} ({data['ticker']}) closed at {_money(data, data['indicators']['last_close'])} "
                    f"on {data['indicators']['last_date']}. Specialist views: {views}. "
                    f"Weighted outlook: {outlook} (score {score:+.2f}).")
+        b = data.get("benchmark")
+        if b and b.get("relative_strength_1y") is not None:
+            verb = "outperformed" if b["relative_strength_1y"] >= 0 else "underperformed"
+            summary += (f" Over 1 year it {verb} the {b['name']} "
+                        f"({_pct(b['stock_return_1y'])} vs {_pct(b['index_return_1y'])}).")
         return {
             "summary": summary,
             "bullish_points": [p for f in findings for p in f.bullish_points[:3]],
@@ -347,11 +421,17 @@ class LeadAnalyst:
             risks.append(f"Valuation risk: P/E {pe:.1f} leaves little room for disappointment.")
         if s.get("debtToEquity", 0) > 150:
             risks.append(f"Leverage risk: debt/equity {s['debtToEquity']:.0f}%.")
-        if s.get("beta", 0) > 1.3:
-            risks.append(f"High beta ({s['beta']:.2f}): amplified sensitivity to market moves.")
+        b = data.get("benchmark") or {}
+        beta = b.get("beta") if b.get("beta") is not None else s.get("beta")
+        if beta is not None and beta > 1.3:
+            risks.append(f"High beta ({beta:.2f}): amplified sensitivity to market moves.")
         if not data["news"]:
             risks.append("No recent headlines were available, so news-driven risk is unassessed.")
-        risks.append("Broad market, interest-rate and macro shocks can override stock-specific signals.")
+        if data.get("is_indian"):
+            risks.append("Indian market risks: RBI rate decisions, rupee moves, FII flows and SEBI "
+                         "regulation can override stock-specific signals.")
+        else:
+            risks.append("Broad market, interest-rate and macro shocks can override stock-specific signals.")
         risks.append("Yahoo Finance data may be delayed, incomplete or revised.")
         return risks
 

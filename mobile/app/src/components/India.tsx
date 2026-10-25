@@ -6,6 +6,7 @@ import { BUILTIN_POPULAR } from '../api/mock';
 import type { IndiaInstrument, IndiaPopular, IndiaSearchResult } from '../api/types';
 import { useLoad } from '../hooks';
 import { useMarketStatus } from './Live';
+import { fmtIst } from './Widgets';
 
 /** NSE open/closed pill. Hidden entirely if the endpoint is missing or fails. */
 export const MarketStatusPill: React.FC<{ refreshKey?: number }> = ({ refreshKey }) => {
@@ -13,7 +14,7 @@ export const MarketStatusPill: React.FC<{ refreshKey?: number }> = ({ refreshKey
   useEffect(() => { if (refreshKey) refresh(); }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!d) return null;
   const open = typeof d.is_open === 'boolean' ? d.is_open : /open/i.test(String(d.status ?? d.label ?? ''));
-  const next = open ? d.next_close_ist ?? d.next_close : d.next_open_ist ?? d.next_open;
+  const next = fmtIst(open ? d.next_close_ist ?? d.next_close : d.next_open_ist ?? d.next_open, true);
   const label = `${d.exchange ?? 'NSE'} ${open ? 'Open' : 'Closed'}`;
   const detail = d.message ?? (next ? `${open ? 'closes' : 'opens'} ${next}` : null);
   return (
@@ -22,6 +23,7 @@ export const MarketStatusPill: React.FC<{ refreshKey?: number }> = ({ refreshKey
         <IonIcon icon={ellipse} style={{ fontSize: 10 }} />
         <IonLabel><strong>{label}</strong>{detail ? ` · ${detail}` : ''}</IonLabel>
       </IonChip>
+      {d.note && <IonNote className="small">{d.note}</IonNote>}
     </div>
   );
 };

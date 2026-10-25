@@ -5,9 +5,12 @@ __pycache__/
 var/
 *.db
 projects/07_object_detection/.ultralytics/
-# rebuilt at image build time by scripts/build_models.py
-projects/01_credit_card_fraud_detection/models/
-projects/02_upi_fraud_detection/models/
+# The 01/02 scikit-learn pickles ARE tracked (made with scikit-learn 1.9.1, the version pinned in
+# requirements*.txt); scripts/build_models.py --sklearn-if-broken retrains them only if they
+# fail to load. Their generated training data is not tracked.
 projects/01_credit_card_fraud_detection/data/
 projects/02_upi_fraud_detection/data/
 projects/03_stock_price_prediction_lstm_rnn/models/*.png
+# price caches downloaded at runtime (the few already tracked stay tracked)
+projects/03_stock_price_prediction_lstm_rnn/data/*.csv
+!projects/03_stock_price_prediction_lstm_rnn/data/nse_equities.csv

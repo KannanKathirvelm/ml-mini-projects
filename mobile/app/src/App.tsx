@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { Redirect, Route } from 'react-router-dom';
 import type { FeatureModule } from './features/types';
 import Settings from './pages/Settings';
+import { wakeServer } from './api/client';
 import { SettingsProvider, useSettings } from './settings';
 
 setupIonicReact({ mode: 'md' });
@@ -25,6 +26,8 @@ const Shell: React.FC = () => {
   const { ready } = useSettings();
   const [mod, setMod] = useState<FeatureModule | null>(null);
   useEffect(() => { loadFeature().then((m) => setMod(m.default)); }, []);
+  // Start waking a sleeping (free-tier) server as soon as the saved URL is known.
+  useEffect(() => { if (ready) wakeServer(); }, [ready]);
   if (!ready || !mod) return <div className="boot"><IonSpinner name="crescent" /></div>;
   return (
     <IonReactRouter>

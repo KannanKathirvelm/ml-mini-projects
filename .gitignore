@@ -1,5 +1,6 @@
 # Python
 .venv/
+.venv-retrain/
 __pycache__/
 *.pyc
 .pytest_cache/
@@ -19,6 +20,8 @@ mobile/app/android/capacitor-cordova-android-plugins/build/
 01_credit_card_fraud_detection/data/transactions*.csv
 02_upi_fraud_detection/data/upi_transactions*.csv
 03_stock_price_prediction_lstm_rnn/data/*.csv
+!03_stock_price_prediction_lstm_rnn/data/nse_equities.csv
+!03_stock_price_prediction_lstm_rnn/data/nse_equities_meta.json
 05_price_comparison_app/data/prices.db
 06_face_detection/outputs/
 07_object_detection/outputs/

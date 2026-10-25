@@ -1,0 +1,160 @@
+# Builds the 7 debug APKs (one Capacitor project, Gradle productFlavors) on a free GitHub-hosted runner.
+# - every push to main that touches mobile/app/** (or this file): APKs as a workflow artifact
+# - tag v* or "Run workflow" with release=true: also a GitHub Release with every APK attached
+name: Android APKs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mobile/app/**"
+      - ".github/workflows/android-apks.yml"
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      flavors:
+        description: 'Flavors to build: "all" or a space/comma list (creditcard upi stocks finance prices faces objects)'
+        type: string
+        default: all
+      release:
+        description: "Publish a GitHub Release (tag apks-latest) with the APKs"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apks-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Server URL baked into the apps (users can still change it in Settings).
+  # Set the repository variable API_URL to override; otherwise the Render free service is used.
+  VITE_API_URL: ${{ vars.API_URL || 'https://ml-mini-projects.onrender.com' }}
+
+jobs:
+  build:
+    name: Build debug APKs
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile/app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/app/package-lock.json
+
+      # AGP 8.2.1 requires JDK 17 and is tested against it; Temurin 17 is the conservative choice
+      # (the jlink failure seen locally was specific to GraalVM, not to JDK 17).
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Uses the runner's preinstalled SDK (ANDROID_HOME) and accepts licenses so AGP can fetch
+      # any missing platform/build-tools (compileSdk 34) on demand.
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/wrapper-validation@v4
+
+      # Caches ~/.gradle (wrapper distribution, dependencies) between runs.
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Optional: a fixed debug key so each new build installs as an update over the previous one.
+      # Without the secret every runner generates a fresh debug key (then uninstall before reinstalling).
+      - name: Restore debug keystore (optional secret)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            mkdir -p ~/.android
+            echo "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+            echo "Using the debug keystore from secrets."
+          else
+            echo "No ANDROID_DEBUG_KEYSTORE_BASE64 secret; using a fresh runner debug key."
+          fi
+
+      - name: Install npm dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck and web build of all flavors
+        run: npm run build:flavors
+
+      - name: Build APKs
+        env:
+          FLAVORS: ${{ github.event_name == 'workflow_dispatch' && inputs.flavors || 'all' }}
+        run: |
+          echo "API URL: $VITE_API_URL"
+          read -ra LIST <<< "${FLAVORS//,/ }"
+          npm run build:android -- "${LIST[@]:-all}"
+          ls -l dist-apk
+
+      - name: Summary
+        run: |
+          {
+            echo "### APKs"
+            echo "Server URL baked in: \`$VITE_API_URL\`"
+            echo
+            echo "| APK | Size |"
+            echo "|---|---|"
+            for f in dist-apk/*.apk; do echo "| $(basename "$f") | $(du -h "$f" | cut -f1) |"; done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ml-mini-apps-apks
+          path: mobile/app/dist-apk/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ml-mini-apps-apks
+          path: apks
+
+      - name: Choose tag
+        id: tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "name=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          else
+            # Rolling release: move the apks-latest tag to this commit.
+            git tag -f apks-latest "$GITHUB_SHA"
+            git push -f origin refs/tags/apks-latest
+            echo "name=apks-latest" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: ${{ steps.tag.outputs.name == 'apks-latest' && 'Latest APKs (rolling)' || steps.tag.outputs.name }}
+          prerelease: ${{ steps.tag.outputs.prerelease == 'true' }}
+          make_latest: ${{ steps.tag.outputs.prerelease == 'true' && 'false' || 'true' }}
+          files: apks/*.apk
+          fail_on_unmatched_files: true
+          body: |
+            Seven debug-signed Android apps built from `${{ github.sha }}`.
+            Server URL baked in: `${{ env.VITE_API_URL }}` (change it in each app's Settings tab).
+
+            Install on a phone: download an `.apk` below in the phone's browser, open it, and allow
+            "Install unknown apps" for the browser when Android asks. The free server sleeps when idle,
+            so the first request can take up to a minute.

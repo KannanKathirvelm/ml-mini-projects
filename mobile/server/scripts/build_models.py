@@ -3,6 +3,8 @@
     python scripts/build_models.py --sklearn              # retrain 01 + 02 (deterministic, ~1 min)
     python scripts/build_models.py --stocks MSFT,TCS.NS   # train stock models that are missing
     python scripts/build_models.py --warm-yolo            # fetch missing YOLO weights + font
+    python scripts/build_models.py --sklearn-if-broken    # Render build: retrain 01/02 only if the
+                                                          # shipped pickles fail to load/score
 
 Each project's own generate_data.py / train.py is run as a subprocess with the
 project copy as working directory, so bare-name imports stay isolated.
@@ -44,6 +46,33 @@ def build_sklearn(force: bool, clean: bool) -> None:
             (root / data).unlink()  # regenerated on demand; keeps the image small
 
 
+def sklearn_ok(project: str, model: str) -> bool:
+    """Does the shipped pickle load and score one row with the installed scikit-learn?"""
+    root = PROJECTS / project
+    if not (root / model).exists():
+        return False
+    code = ("import warnings, predict\n"
+            "warnings.simplefilter('error', category=UserWarning)\n"  # InconsistentVersionWarning
+            "b = predict.load()\n"
+            "assert 'threshold' in b\n")
+    r = subprocess.run([sys.executable, "-c", code], cwd=root, capture_output=True, text=True)
+    if r.returncode:
+        print(f"  {project}: shipped model unusable ({(r.stderr.strip().splitlines() or ['?'])[-1]})")
+    return r.returncode == 0
+
+
+def build_sklearn_if_broken(clean: bool) -> None:
+    for project, (model, data) in SKLEARN.items():
+        if sklearn_ok(project, model):
+            print(f"  {project}: shipped model loads with this scikit-learn, keeping it")
+            continue
+        root = PROJECTS / project
+        run(["generate_data.py"], root)
+        run(["train.py"], root)
+        if clean and (root / data).exists():
+            (root / data).unlink()
+
+
 def build_stocks(tickers: list[str], force: bool) -> None:
     root = PROJECTS / STOCKS
     for t in tickers:
@@ -68,6 +97,8 @@ def warm_yolo() -> None:
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--sklearn", action="store_true")
+    p.add_argument("--sklearn-if-broken", action="store_true",
+                   help="keep the shipped 01/02 pickles if they load, otherwise retrain")
     p.add_argument("--stocks", default="", help="comma-separated tickers")
     p.add_argument("--warm-yolo", action="store_true")
     p.add_argument("--force", action="store_true")
@@ -75,6 +106,8 @@ def main() -> None:
     a = p.parse_args()
     if a.sklearn:
         build_sklearn(a.force, a.clean_data)
+    elif a.sklearn_if_broken:
+        build_sklearn_if_broken(a.clean_data)
     if a.stocks:
         build_stocks([t.strip().upper() for t in a.stocks.split(",") if t.strip()], a.force)
     if a.warm_yolo:

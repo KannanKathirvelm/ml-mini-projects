@@ -10,7 +10,7 @@ export const Loading: React.FC<{ slow?: boolean; label?: string; slowLabel?: str
       <div>{label}</div>
       {slow && (
         <IonNote className="small">
-          {slowLabel ?? 'Server waking up… the first request after a restart can take up to a minute.'}
+          {slowLabel ?? 'Server waking up… (free hosting, up to a minute). The first request after it has been idle is slow; it retries automatically.'}
         </IonNote>
       )}
     </div>

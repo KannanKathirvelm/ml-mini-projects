@@ -33,6 +33,25 @@ function tradingDays(endISO: string, n: number, forward = false): string[] {
   return forward ? out : out.reverse();
 }
 const LAST_DATE = '2026-10-23';
+const AS_OF = `${LAST_DATE}T15:30:00+05:30`;
+
+/** Mirrors the server's India-first normalize_ticker (API.md section 8) for the common cases. */
+const ALIASES: Record<string, string> = {
+  NIFTY: '^NSEI', NIFTY50: '^NSEI', SENSEX: '^BSESN', BANKNIFTY: '^NSEBANK', INFOSYS: 'INFY.NS', 'STATE BANK': 'SBIN.NS', SBI: 'SBIN.NS',
+  TATAMOTORS: 'TMPV.NS', AIRTEL: 'BHARTIARTL.NS',
+};
+const US = new Set(['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META']);
+export function normalizeTicker(t: string): string {
+  const T = t.trim().toUpperCase();
+  if (ALIASES[T]) return ALIASES[T];
+  if (T.startsWith('^') || T.includes('.') || US.has(T)) return T;
+  return `${T.replace(/\s+/g, '')}.NS`;
+}
+const isInr = (T: string) => T.endsWith('.NS') || T.endsWith('.BO') || ['^NSEI', '^BSESN', '^NSEBANK'].includes(T);
+const fmtMoney = (x: number, inr: boolean) => (inr ? '₹' + x.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  : '$' + x.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+const UNIVERSAL_INFO = { kind: 'universal', trained_on: 48, trained_until: LAST_DATE,
+  note: 'One RNN and one LSTM trained on ~50 liquid NSE stocks pooled together (mock).' };
 
 export const health = (): Promise<Health> =>
   wait({ status: 'ok', version: '1', projects: ['credit-card', 'upi', 'stocks', 'finance', 'prices', 'faces', 'objects'] }, 250);
@@ -95,9 +114,10 @@ export function upiPredict(b: UpiInput): Promise<UpiResult> {
 }
 
 // ---- 3. Stocks ----
-const TRAINED = ['AAPL', 'MSFT', 'RELIANCE.NS', 'TCS.NS'];
+// Like the v1.1 server: per-ticker models for a few symbols, the universal India model for everything else.
+const TRAINED = ['AAPL', 'MSFT'];
 const mockTrained = new Set(TRAINED);
-export const stockTickers = (): Promise<StockTickers> => wait({ trained: [...mockTrained] });
+export const stockTickers = (): Promise<StockTickers> => wait({ trained: [...mockTrained], universal: true, universal_info: UNIVERSAL_INFO });
 const BASES: Record<string, number> = { AAPL: 347.73, MSFT: 512.4, 'RELIANCE.NS': 1420.5, 'TCS.NS': 3920.0 };
 function buildForecast(t: string, days: number): StockForecast {
   const r = rng(t);
@@ -117,8 +137,10 @@ function buildForecast(t: string, days: number): StockForecast {
   const actual = testDates.map((_, i) => round(closes[29 + i] ?? last, 2));
   const k = last / 100;
   return {
-    ticker: t, last_close: round(last, 2), last_date: LAST_DATE, as_of_ist: '2026-10-23 15:30 IST',
-    currency: t.endsWith('.NS') || t.startsWith('^') ? 'INR' : 'USD',
+    ticker: t, normalized_ticker: t, last_close: round(last, 2), last_date: LAST_DATE, as_of_ist: AS_OF, market_open: false,
+    name: [...BUILTIN_POPULAR.stocks, ...BUILTIN_POPULAR.indices].find((x) => x.symbol === t)?.name ?? null,
+    currency: isInr(t) ? 'INR' : 'USD', display: { last_close: fmtMoney(round(last, 2), isInr(t)) },
+    model: mockTrained.has(t) ? 'per_ticker' : 'universal', model_info: mockTrained.has(t) ? null : UNIVERSAL_INFO,
     history: dates.map((date, i) => ({ date, close: round(closes[i], 2) })),
     forecast,
     metrics: {
@@ -134,21 +156,21 @@ function buildForecast(t: string, days: number): StockForecast {
   };
 }
 export function stockForecast(t: string, days: number): Promise<StockForecast> {
-  const T = t.toUpperCase();
-  if (!mockTrained.has(T)) return fail(404, `No trained model for ${T} yet. Train it first (POST /api/stocks/${T}/train).`);
+  const T = normalizeTicker(t);
+  if (!/^[A-Z0-9.\-^&]{1,20}$/.test(T) || T.startsWith('ZZ')) return fail(404, `No price data found for '${T}'.`);
   return wait(buildForecast(T, Math.min(30, Math.max(1, days))));
 }
 export function stockTrain(t: string): Promise<StockForecast> {
-  const T = t.toUpperCase();
-  if (!/^[A-Z0-9.\-^]{1,12}$/.test(T)) return fail(400, `Unknown symbol: ${t}`);
+  const T = normalizeTicker(t);
+  if (!/^[A-Z0-9.\-^&]{1,20}$/.test(T)) return fail(400, `Unknown symbol: ${t}`);
   mockTrained.add(T);
-  return wait(buildForecast(T, 10), 4000);
+  return wait({ ...buildForecast(T, 10), trained: true }, 4000);
 }
 
 // ---- 4. Finance ----
 export function financeReport(t: string): Promise<FinanceReport> {
-  const T = t.toUpperCase();
-  if (!/^[A-Z0-9.\-^]{1,12}$/.test(T)) return fail(404, `Unknown ticker: ${t}`);
+  const T = normalizeTicker(t);
+  if (!/^[A-Z0-9.\-^&]{1,20}$/.test(T)) return fail(404, `Unknown ticker: ${t}`);
   const r = rng('fin' + T);
   const last = BASES[T] ?? 50 + r() * 300;
   const dates = tradingDays(LAST_DATE, 249).concat(LAST_DATE);
@@ -159,8 +181,8 @@ export function financeReport(t: string): Promise<FinanceReport> {
   const chart = dates.map((date, i) => ({ date, close: round(closes[i], 2), sma20: sma(i, 20), sma50: sma(i, 50), sma200: sma(i, 200) }));
   const company = ({ AAPL: 'Apple Inc.', MSFT: 'Microsoft Corporation', 'RELIANCE.NS': 'Reliance Industries Limited', 'TCS.NS': 'Tata Consultancy Services' } as Record<string, string>)[T] ?? `${T} (mock company)`;
   return wait({
-    ticker: T, company, mode: 'offline', mode_label: 'Offline mode (rule-based, no API key)',
-    currency: T.endsWith('.NS') ? 'INR' : 'USD', last_close: round(last, 2), last_date: LAST_DATE,
+    ticker: T, normalized_ticker: T, company, mode: 'offline', mode_label: 'Offline mode (rule-based, no API key)',
+    currency: isInr(T) ? 'INR' : 'USD', last_close: round(last, 2), last_date: LAST_DATE,
     outlook: 'neutral', confidence: 'low',
     summary: `${company} trades above its 50-day average with moderate momentum. Valuation is stretched versus history and news flow is mixed, so the agents land on a neutral outlook.`,
     bullish: ['Price above 50-day and 200-day moving averages', 'Positive 1-month return (+3.5%)', 'Strong operating margins'],
@@ -184,12 +206,13 @@ export function financeReport(t: string): Promise<FinanceReport> {
     sector: T.endsWith('.NS') ? 'Energy' : 'Technology',
     industry: T.endsWith('.NS') ? 'Oil & Gas Refining & Marketing' : 'Consumer Electronics',
     market_cap_display: T.endsWith('.NS') ? '₹19.2 lakh crore' : '$5.1T',
-    display: null,
-    as_of_ist: '2026-10-23 15:30 IST',
-    benchmark: T.endsWith('.NS') ? {
-      name: 'NIFTY 50', symbol: '^NSEI', beta: 1.08,
-      returns: { '1m': { stock: 0.021, index: 0.014 }, '3m': { stock: -0.035, index: 0.022 }, '1y': { stock: 0.112, index: 0.094 } },
-    } : null,
+    display: { last_close: fmtMoney(round(last, 2), isInr(T)) },
+    as_of_ist: AS_OF,
+    benchmark: {
+      ...(isInr(T) ? { symbol: '^NSEI', name: 'NIFTY 50' } : { symbol: '^GSPC', name: 'S&P 500' }),
+      stock_return_1m: -0.021, index_return_1m: 0.012, stock_return_3m: 0.034, index_return_3m: 0.028,
+      stock_return_1y: 0.112, index_return_1y: 0.07, beta: 1.08, relative_strength_1y: 0.042,
+    },
   }, 900);
 }
 
@@ -294,7 +317,7 @@ export async function objectsDetect(image: Blob, o: { conf: number; iou: number;
 // ---- India extras ----
 export const BUILTIN_POPULAR: import('./types').IndiaPopular = {
   indices: [
-    { symbol: '^NSEI', name: 'NIFTY 50' }, { symbol: '^BSESN', name: 'SENSEX' }, { symbol: '^NSEBANK', name: 'BANK NIFTY' },
+    { symbol: '^NSEI', name: 'NIFTY 50' }, { symbol: '^BSESN', name: 'S&P BSE SENSEX' }, { symbol: '^NSEBANK', name: 'NIFTY BANK' },
   ],
   stocks: [
     { symbol: 'RELIANCE.NS', name: 'Reliance Industries', sector: 'Energy' },
@@ -306,17 +329,22 @@ export const BUILTIN_POPULAR: import('./types').IndiaPopular = {
     { symbol: 'BHARTIARTL.NS', name: 'Bharti Airtel', sector: 'Telecom' },
     { symbol: 'ITC.NS', name: 'ITC', sector: 'FMCG' },
     { symbol: 'LT.NS', name: 'Larsen & Toubro', sector: 'Industrials' },
-    { symbol: 'TATAMOTORS.NS', name: 'Tata Motors', sector: 'Auto' },
+    { symbol: 'TMPV.NS', name: 'Tata Motors Passenger Vehicles', sector: 'Auto' },
   ],
 };
 export const indiaPopular = () => wait(BUILTIN_POPULAR, 250);
+const istIso = (d: Date) => `${d.toISOString().slice(0, 19)}+05:30`; // d already shifted to IST wall time (UTC fields)
 export function marketStatus(): Promise<import('./types').MarketStatus> {
-  // Approximate NSE hours (Mon-Fri 09:15-15:30 IST), ignoring holidays.
-  const ist = new Date(Date.now() + (330 + new Date().getTimezoneOffset()) * 60000);
-  const mins = ist.getHours() * 60 + ist.getMinutes();
-  const wd = ist.getDay();
+  // NSE regular session Mon-Fri 09:15-15:30 IST, holidays ignored (same as the server).
+  const ist = new Date(Date.now() + 330 * 60000); // UTC fields = IST wall clock
+  const mins = ist.getUTCHours() * 60 + ist.getUTCMinutes();
+  const wd = ist.getUTCDay();
   const open = wd >= 1 && wd <= 5 && mins >= 555 && mins < 930;
-  return wait({ exchange: 'NSE', is_open: open, status: open ? 'Open' : 'Closed', next_close_ist: open ? '15:30 IST' : null, next_open_ist: open ? null : 'next weekday 09:15 IST' }, 200);
+  const day = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()));
+  if (!open && (wd === 0 || wd === 6 || mins >= 930)) do day.setUTCDate(day.getUTCDate() + 1); while (day.getUTCDay() === 0 || day.getUTCDay() === 6);
+  const at = (h: number, m: number) => istIso(new Date(day.getTime() + (h * 60 + m) * 60000));
+  return wait({ exchange: 'NSE', is_open: open, now_ist: istIso(ist), next_open_ist: open ? null : at(9, 15), next_close_ist: at(15, 30),
+    note: 'Exchange holidays not included' }, 200);
 }
 const MOCK_LISTED = [
   ['RELIANCE', 'Reliance Industries Limited', 'INE002A01018'], ['INFY', 'Infosys Limited', 'INE009A01021'],
@@ -334,23 +362,28 @@ export function indiaSearch(query: string, limit = 10): Promise<import('./types'
 
 // ---- Live quotes (mock) ----
 const LIVE_BASE: Record<string, number> = { 'RELIANCE.NS': 1190, 'TCS.NS': 3015.4, 'INFY.NS': 1488.9, 'HDFCBANK.NS': 1001.2, 'ICICIBANK.NS': 1352.6, 'SBIN.NS': 912.35, '^NSEI': 25795.15, '^BSESN': 84211.88, '^NSEBANK': 58114.6, AAPL: 347.73 };
-const istNow = () => new Date(Date.now() + (330 + new Date().getTimezoneOffset()) * 60000);
-const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 export function liveQuote(t: string): Promise<import('./types').Quote> {
-  const T = t.toUpperCase();
+  const T = normalizeTicker(t);
   const r = rng('q' + T + Math.floor(Date.now() / 30000));
   const prev = LIVE_BASE[T] ?? 500 + rng(T)() * 2000;
   const change = Math.round(prev * (r() - 0.45) * 0.03 * 100) / 100;
+  const price = Math.round((prev + change) * 100) / 100;
+  const pct = Math.round((change / prev) * 10000) / 100;
+  const inr = isInr(T);
+  const sgn = change >= 0 ? '+' : '-';
   return wait({
     symbol: T, name: BUILTIN_POPULAR.stocks.concat(BUILTIN_POPULAR.indices).find((x) => x.symbol === T)?.name ?? T,
-    currency: T.endsWith('.NS') || T.startsWith('^') ? 'INR' : 'USD', price: Math.round((prev + change) * 100) / 100, change,
-    change_pct: Math.round((change / prev) * 10000) / 100, prev_close: prev, as_of_ist: `${hhmm(istNow())} IST`, delayed: true, display: null,
+    currency: inr ? 'INR' : 'USD', price, change, change_pct: pct, prev_close: prev,
+    open: Math.round(prev * 1.001 * 100) / 100, high: Math.round(Math.max(price, prev) * 1.004 * 100) / 100, low: Math.round(Math.min(price, prev) * 0.996 * 100) / 100,
+    volume: Math.round(r() * 9e6), market_open: null, as_of_ist: istIso(new Date(Date.now() + 330 * 60000)), delayed: true,
+    source: 'Mock data (offline)', delayed_note: 'Mock mode: prices are generated, not real.',
+    display: { price: fmtMoney(price, inr), change: `${sgn}${fmtMoney(Math.abs(change), inr)} (${sgn}${Math.abs(pct).toFixed(2)}%)` },
   }, 250);
 }
 export function liveIntraday(t: string, interval: '1m' | '5m'): Promise<import('./types').Intraday> {
-  const T = t.toUpperCase();
+  const T = normalizeTicker(t);
   const r = rng('i' + T);
-  const prev = LIVE_BASE[T] ?? 1000;
+  const prev = LIVE_BASE[T] ?? 500 + rng(T)() * 2000;
   const step = interval === '1m' ? 1 : 5;
   const points = [];
   let p = prev;
@@ -358,5 +391,11 @@ export function liveIntraday(t: string, interval: '1m' | '5m'): Promise<import('
     p *= 1 + (r() - 0.5) * 0.002 * Math.sqrt(step);
     points.push({ t: `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`, price: Math.round(p * 100) / 100 });
   }
-  return wait({ symbol: T, interval, points, as_of_ist: '15:30 IST', prev_close: prev, currency: 'INR' }, 300);
+  return wait({ symbol: T, interval, points, session_date: LAST_DATE, market_open: false, source: 'Mock data (offline)',
+    as_of_ist: `${LAST_DATE}T15:30:00+05:30`, prev_close: prev, currency: isInr(T) ? 'INR' : 'USD' }, 300);
+}
+export function indiaStocks(offset = 0, limit = 100): Promise<import('./types').IndiaStocksPage> {
+  const all = [...MOCK_LISTED].sort(([a], [b]) => a.localeCompare(b))
+    .map(([s, n, isin]) => ({ symbol: `${s}.NS`, nse_symbol: s, name: n, isin, series: 'EQ' }));
+  return wait({ total: all.length, offset, limit, snapshot_date: LAST_DATE, stocks: all.slice(offset, offset + limit) }, 200);
 }

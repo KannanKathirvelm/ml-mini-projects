@@ -4,7 +4,7 @@ export interface AsyncState<T> {
   data: T | null;
   error: Error | null;
   loading: boolean;
-  /** true once a request has been running for > 5 s (likely a cold-starting Hugging Face Space) */
+  /** true once a request has been running for > 5 s (likely a sleeping free-tier server waking up) */
   slow: boolean;
   run: (fn: () => Promise<T>) => Promise<T | null>;
   reset: () => void;

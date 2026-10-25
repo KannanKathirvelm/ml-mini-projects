@@ -15,12 +15,12 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import settings
-from .routers import finance, fraud, prices, stocks, vision
+from .routers import finance, fraud, india, prices, stocks, vision
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("server")
 
-PROJECTS = ["credit-card", "upi", "stocks", "finance", "prices", "faces", "objects"]
+PROJECTS = ["credit-card", "upi", "stocks", "finance", "prices", "faces", "objects", "india"]
 
 
 def preload() -> dict[str, str]:
@@ -28,7 +28,7 @@ def preload() -> dict[str, str]:
     steps = {
         "credit-card": fraud.cc,
         "upi": fraud.upi,
-        "stocks": stocks.ns,
+        "stocks": lambda: (stocks.ns(), stocks.predictors("universal")),
         "finance": finance.ns,
         "prices": lambda: (prices.ns(), settings.SEED_PRICE_HISTORY and prices.seed_if_empty()),
         "faces": lambda: (vision.face_detector("yunet"), vision.face_detector("haar")),
@@ -58,6 +58,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="ML mini projects API", version=settings.VERSION, lifespan=lifespan)
+log.info("server profile: %s (preload=%s)", settings.PROFILE, settings.PRELOAD)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"],
                    allow_headers=["*"], allow_credentials=False)
 
@@ -97,7 +98,8 @@ async def unhandled(request: Request, exc: Exception):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "version": settings.VERSION, "projects": PROJECTS}
+    return {"status": "ok", "version": settings.VERSION, "projects": PROJECTS,
+            "profile": settings.PROFILE}
 
 
 @app.get("/")
@@ -106,5 +108,5 @@ def root():
 
 
 for r in (fraud.cc_router, fraud.upi_router, stocks.router, finance.router, prices.router,
-          vision.faces_router, vision.objects_router):
+          vision.faces_router, vision.objects_router, india.router):
     app.include_router(r)

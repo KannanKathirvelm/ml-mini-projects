@@ -7,10 +7,11 @@ import { api } from '../api/client';
 import type { Health } from '../api/types';
 import { Page } from '../components/Page';
 import { FLAVOR } from '../flavor';
-import { DEFAULT_SETTINGS, useSettings } from '../settings';
+import { DEFAULT_SETTINGS, HOSTED_API_URL, useSettings } from '../settings';
 
 const PRESETS: [string, string][] = [
   ['Build default', DEFAULT_SETTINGS.serverUrl],
+  ...(DEFAULT_SETTINGS.serverUrl !== HOSTED_API_URL ? [['Hosted (Render)', HOSTED_API_URL] as [string, string]] : []),
   ['Emulator → host', 'http://10.0.2.2:7860'],
   ['Same machine (browser)', 'http://localhost:7860'],
 ];
@@ -54,7 +55,7 @@ const Settings: React.FC = () => {
             ))}
           </div>
           <IonNote className="small">
-            Real phone on Wi-Fi: use your computer's LAN IP, e.g. http://192.168.1.20:7860. Public tunnel URLs (e.g. trycloudflare.com) change whenever the tunnel restarts; paste the new one here.
+            Real phone on Wi-Fi: use your computer's LAN IP, e.g. http://192.168.1.20:7860. The hosted server is on a free plan that sleeps after 15 minutes idle, so the first test can take up to a minute. Public tunnel URLs (e.g. trycloudflare.com) change whenever the tunnel restarts; paste the new one here.
           </IonNote>
           <div className="button-row">
             <IonButton disabled={!dirty} onClick={save}>Save</IonButton>

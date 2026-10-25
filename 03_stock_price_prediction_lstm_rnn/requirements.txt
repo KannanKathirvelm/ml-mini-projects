@@ -5,3 +5,5 @@ pandas
 matplotlib
 plotly
 streamlit
+pytest
+# optional, for export_onnx.py: onnx onnxruntime onnxscript
